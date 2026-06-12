@@ -15,3 +15,5 @@ requirements.txt
 *.db
 *.log
 *.md
+frontend/node_modules/
+frontend/dist/

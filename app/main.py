@@ -2,9 +2,9 @@
 FloodGuard AI -- FastAPI service.
 
 Serves the prediction REST API (`/predict`, `/health`, `/model/info`,
-`/feedback`, `/monitoring/stats`) and the static frontend
-(`/`, `/predict`, `/dashboard`) from a single process, so the whole
-product is one Docker image / one Render URL.
+`/feedback`, `/monitoring/stats`) and the React frontend
+(`frontend/dist`) from a single process, so the whole product is one
+Docker image / one Render URL.
 """
 from __future__ import annotations
 
@@ -13,6 +13,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -29,7 +30,7 @@ from .schemas import (
     PredictResponse,
 )
 
-STATIC_DIR = Path(__file__).resolve().parent / "static"
+FRONTEND_DIST = config.ROOT_DIR / "frontend" / "dist"
 
 predictor: FloodRiskPredictor | None = None
 
@@ -43,6 +44,14 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="FloodGuard AI", version=config.MODEL_VERSION, lifespan=lifespan)
+
+# Allow the Vite dev server to call this API directly during development.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.get("/health", response_model=HealthResponse)
@@ -113,20 +122,15 @@ def monitoring_stats():
     return monitoring.get_stats()
 
 
-# ── Static frontend ──────────────────────────────────────────────────────
-app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+# ── React frontend (built via `npm run build` in frontend/) ──────────────
+app.mount("/assets", StaticFiles(directory=str(FRONTEND_DIST / "assets")), name="assets")
 
 
-@app.get("/")
-def home():
-    return FileResponse(str(STATIC_DIR / "home.html"))
+@app.get("/favicon.svg", include_in_schema=False)
+def favicon():
+    return FileResponse(str(FRONTEND_DIST / "favicon.svg"))
 
 
-@app.get("/predict", response_class=FileResponse, include_in_schema=False)
-def predict_page():
-    return FileResponse(str(STATIC_DIR / "index.html"))
-
-
-@app.get("/dashboard")
-def dashboard():
-    return FileResponse(str(STATIC_DIR / "dashboard.html"))
+@app.get("/{full_path:path}", response_class=FileResponse, include_in_schema=False)
+def spa(full_path: str):
+    return FileResponse(str(FRONTEND_DIST / "index.html"))

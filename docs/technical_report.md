@@ -287,15 +287,20 @@ documented, deliberate cost of that trade-off.
 
 ## 4.1 Deployment Strategy
 
-- **Containerization**: a single `Dockerfile` (Python 3.11-slim base) installs
-  the minimal runtime dependency set (`requirements-app.txt` — pandas, numpy,
-  scikit-learn, lightgbm, catboost, xgboost, fastapi, uvicorn, anthropic; the
-  heavier dev/training dependencies — optuna, mlflow, matplotlib, pytest — are
-  kept in `requirements.txt` only) and copies `src/`, `app/`, and the trained
-  `models/v1/` artifacts into the image. `.dockerignore` excludes the dataset,
-  MLflow store, virtualenv, and tests from the build context.
+- **Containerization**: a multi-stage `Dockerfile` first builds the React
+  (Vite + TypeScript + shadcn/ui) frontend in a `node:22-slim` stage, then
+  copies the resulting `frontend/dist/` build into a `python:3.11-slim` stage
+  that installs the minimal runtime dependency set (`requirements-app.txt` —
+  pandas, numpy, scikit-learn, lightgbm, catboost, xgboost, fastapi, uvicorn,
+  anthropic; the heavier dev/training dependencies — optuna, mlflow,
+  matplotlib, pytest — are kept in `requirements.txt` only) and copies `src/`,
+  `app/`, and the trained `models/v1/` artifacts into the image.
+  `.dockerignore` excludes the dataset, MLflow store, virtualenv,
+  `frontend/node_modules`/`frontend/dist`, and tests from the build context.
 - **API serving**: `uvicorn app.main:app` serves both the REST API and the
-  static frontend (`app/static/`) from one process.
+  built React frontend (`frontend/dist/`) from one process, with a catch-all
+  route so client-side routing (`/predict`, `/dashboard`) works on full page
+  loads and refreshes.
 - **Cloud deployment**: `render.yaml` defines a Render **Docker web service**
   with a `/health` check and an optional `ANTHROPIC_API_KEY` environment
   variable. Render builds the `Dockerfile` directly — no separate build step or
