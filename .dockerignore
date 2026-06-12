@@ -1,0 +1,17 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.git/
+.github/
+mlruns/
+catboost_info/
+data/
+docs/
+tests/
+conftest.py
+pytest.ini
+requirements.txt
+*.db
+*.log
+*.md

@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FloodGuard AI — Flood Risk Predictor</title>
+  <link rel="stylesheet" href="/static/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <header>
+    <a href="/" class="brand">
+      <svg class="brand-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <defs>
+          <linearGradient id="brandGrad" x1="4" y1="2" x2="28" y2="30" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#38bdf8" />
+            <stop offset="1" stop-color="#6366f1" />
+          </linearGradient>
+        </defs>
+        <path d="M16 2.5 27.5 7.2v7.6c0 8-5 13.6-11.5 16.2C9 28.4 4.5 22.8 4.5 14.8V7.2z"
+              fill="url(#brandGrad)" opacity="0.16" stroke="url(#brandGrad)" stroke-width="1.4" />
+        <path d="M16 9.5c2.9 3.6 4.8 6.3 4.8 8.7a4.8 4.8 0 1 1-9.6 0c0-2.4 1.9-5.1 4.8-8.7z" fill="url(#brandGrad)" />
+      </svg>
+      FloodGuard AI
+    </a>
+    <nav>
+      <a href="/">Home</a>
+      <a href="/predict" class="active">Predict</a>
+      <a href="/dashboard">Dashboard</a>
+    </nav>
+  </header>
+
+  <main>
+    <div class="hero">
+      <h1>Flood Risk Predictor &amp; AI Advisor</h1>
+      <p>
+        Enter conditions for a location in Sri Lanka to get a flood-risk score (0-1) from our
+        LightGBM + CatBoost + XGBoost ensemble, plus a plain-language AI risk report with
+        recommended actions. Fields left at their defaults represent a calm, no-event baseline.
+      </p>
+    </div>
+
+    <div class="layout">
+      <!-- ── Input form ────────────────────────────────────────── -->
+      <section class="card">
+        <h2>Location &amp; Conditions</h2>
+        <form id="predict-form">
+          <h3>Location</h3>
+          <div class="grid-2">
+            <div>
+              <label for="district">District</label>
+              <select id="district" required></select>
+            </div>
+            <div>
+              <label for="urban_rural">Urban / Rural</label>
+              <select id="urban_rural" required></select>
+            </div>
+            <div>
+              <label for="latitude">Latitude</label>
+              <input type="number" id="latitude" step="0.0001" value="6.9271" required />
+            </div>
+            <div>
+              <label for="longitude">Longitude</label>
+              <input type="number" id="longitude" step="0.0001" value="79.8612" required />
+            </div>
+            <div>
+              <label for="landcover">Land cover</label>
+              <select id="landcover" required></select>
+            </div>
+            <div>
+              <label for="soil_type">Soil type</label>
+              <select id="soil_type" required></select>
+            </div>
+          </div>
+
+          <h3>Environment</h3>
+          <div class="grid-2">
+            <div>
+              <label for="elevation_m">Elevation (m)</label>
+              <input type="number" id="elevation_m" step="0.1" value="8" required />
+            </div>
+            <div>
+              <label for="distance_to_river_m">Distance to river (m)</label>
+              <input type="number" id="distance_to_river_m" step="1" value="300" required />
+            </div>
+            <div>
+              <label for="rainfall_7d_mm">Rainfall, last 7 days (mm)</label>
+              <input type="number" id="rainfall_7d_mm" step="0.1" value="120" required />
+            </div>
+            <div>
+              <label for="monthly_rainfall_mm">Monthly rainfall (mm)</label>
+              <input type="number" id="monthly_rainfall_mm" step="0.1" value="280" required />
+            </div>
+            <div>
+              <label for="drainage_index">Drainage index (0-2)</label>
+              <input type="number" id="drainage_index" step="0.01" value="0.5" required />
+            </div>
+            <div>
+              <label for="historical_flood_count">Historical flood count</label>
+              <input type="number" id="historical_flood_count" step="1" value="2" required />
+            </div>
+            <div>
+              <label for="ndvi">NDVI (vegetation, -1 to 1)</label>
+              <input type="number" id="ndvi" step="0.01" value="0.35" required />
+            </div>
+            <div>
+              <label for="ndwi">NDWI (surface water, -1 to 1)</label>
+              <input type="number" id="ndwi" step="0.01" value="0.1" required />
+            </div>
+            <div>
+              <label for="water_presence_flag">Water body nearby?</label>
+              <select id="water_presence_flag" required></select>
+            </div>
+          </div>
+
+          <h3>Infrastructure &amp; Socioeconomic</h3>
+          <div class="grid-2">
+            <div>
+              <label for="population_density_per_km2">Population density (per km²)</label>
+              <input type="number" id="population_density_per_km2" step="1" value="2500" required />
+            </div>
+            <div>
+              <label for="built_up_percent">Built-up land (%)</label>
+              <input type="number" id="built_up_percent" step="0.1" value="55" required />
+            </div>
+            <div>
+              <label for="infrastructure_score">Infrastructure score (0-100)</label>
+              <input type="number" id="infrastructure_score" step="0.1" value="60" required />
+            </div>
+            <div>
+              <label for="water_supply">Water supply</label>
+              <select id="water_supply" required></select>
+            </div>
+            <div>
+              <label for="electricity">Electricity</label>
+              <select id="electricity" required></select>
+            </div>
+            <div>
+              <label for="road_quality">Road quality</label>
+              <select id="road_quality" required></select>
+            </div>
+            <div>
+              <label for="nearest_hospital_km">Nearest hospital (km)</label>
+              <input type="number" id="nearest_hospital_km" step="0.1" value="4" required />
+            </div>
+            <div>
+              <label for="nearest_evac_km">Nearest evacuation center (km)</label>
+              <input type="number" id="nearest_evac_km" step="0.1" value="3" required />
+            </div>
+          </div>
+
+          <details>
+            <summary>Advanced: current event &amp; composite indices (optional)</summary>
+            <h3>Current event</h3>
+            <div class="grid-2">
+              <div>
+                <label for="flood_occurrence_current_event">Flooding happening right now?</label>
+                <select id="flood_occurrence_current_event">
+                  <option value="No" selected>No</option>
+                  <option value="Yes">Yes</option>
+                </select>
+              </div>
+              <div id="inundation-wrap" style="display:none">
+                <label for="inundation_area_sqm">Inundated area (sq. m)</label>
+                <input type="number" id="inundation_area_sqm" step="1" value="0" />
+              </div>
+              <div>
+                <label for="is_good_to_live">Currently considered good to live?</label>
+                <select id="is_good_to_live">
+                  <option value="Yes" selected>Yes</option>
+                  <option value="No">No</option>
+                </select>
+              </div>
+              <div id="reason-wrap" style="display:none">
+                <label for="reason_not_good_to_live">Reason (optional)</label>
+                <input type="text" id="reason_not_good_to_live" placeholder="e.g. frequent flooding, poor road access" />
+              </div>
+            </div>
+
+            <h3>Composite indices (auto-filled from district averages)</h3>
+            <div class="grid-2">
+              <div>
+                <label for="seasonal_index">Seasonal index</label>
+                <input type="number" id="seasonal_index" step="0.0001" />
+              </div>
+              <div>
+                <label for="terrain_roughness_index">Terrain roughness index</label>
+                <input type="number" id="terrain_roughness_index" step="0.0001" />
+              </div>
+              <div>
+                <label for="socioeconomic_status_index">Socioeconomic status index</label>
+                <input type="number" id="socioeconomic_status_index" step="0.0001" />
+              </div>
+              <div>
+                <label for="extreme_weather_index">Extreme weather index</label>
+                <input type="number" id="extreme_weather_index" step="0.0001" />
+              </div>
+            </div>
+          </details>
+
+          <button type="submit" class="btn" id="submit-btn">Assess Flood Risk</button>
+        </form>
+      </section>
+
+      <!-- ── Results ───────────────────────────────────────────── -->
+      <section class="card" id="results-card">
+        <h2>Result</h2>
+        <div id="results-placeholder">
+          Fill in the form and click <strong>Assess Flood Risk</strong> to see the
+          predicted score, risk category, and AI-generated recommendations.
+        </div>
+        <div id="results-content" style="display:none">
+          <div class="gauge-wrap">
+            <div class="gauge" id="gauge">
+              <div class="score"><span id="score-value">--</span><small>risk score</small></div>
+            </div>
+            <span class="badge" id="risk-badge">--</span>
+            <div class="model-breakdown" id="model-breakdown"></div>
+          </div>
+
+          <div id="ood-flags" class="ood-flags" style="display:none"></div>
+
+          <div class="ai-report" id="ai-report">
+            <span class="source-tag" id="ai-source"></span>
+            <p id="ai-summary"></p>
+            <ul id="ai-recommendations"></ul>
+          </div>
+
+          <h3>Top contributing factors</h3>
+          <canvas id="factors-chart" height="220"></canvas>
+
+          <div class="feedback-row" id="feedback-row">
+            <span>Was this useful? Rate it:</span>
+            <span class="stars" id="stars">
+              <span data-v="1">★</span><span data-v="2">★</span><span data-v="3">★</span><span data-v="4">★</span><span data-v="5">★</span>
+            </span>
+            <span class="feedback-msg" id="feedback-msg"></span>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer>FloodGuard AI &mdash; ML Opsidian: Genesis Final Round &mdash; Model v1</footer>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

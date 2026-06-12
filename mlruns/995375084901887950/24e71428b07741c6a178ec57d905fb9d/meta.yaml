@@ -1,0 +1,15 @@
+artifact_uri: file:///Users/malikanishnatha/Desktop/NEW project/ML/flood-guard-ai/mlruns/995375084901887950/24e71428b07741c6a178ec57d905fb9d/artifacts
+end_time: 1781269248498
+entry_point_name: ''
+experiment_id: '995375084901887950'
+lifecycle_stage: active
+run_id: 24e71428b07741c6a178ec57d905fb9d
+run_name: ensemble_v1
+run_uuid: 24e71428b07741c6a178ec57d905fb9d
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1781269204160
+status: 3
+tags: []
+user_id: malikanishnatha
