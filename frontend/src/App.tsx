@@ -3,6 +3,7 @@ import { Layout } from "@/components/layout/Layout";
 import { Home } from "@/pages/Home";
 import { Predict } from "@/pages/Predict";
 import { Dashboard } from "@/pages/Dashboard";
+import { Impact } from "@/pages/Impact";
 
 export default function App() {
   return (
@@ -11,6 +12,7 @@ export default function App() {
         <Route index element={<Home />} />
         <Route path="predict" element={<Predict />} />
         <Route path="dashboard" element={<Dashboard />} />
+        <Route path="impact" element={<Impact />} />
       </Route>
     </Routes>
   );

@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Activity, Droplet, GitBranch, Layers, ShieldCheck, Sparkles } from "lucide-react";
+import { Activity, ArrowRight, Droplet, GitBranch, Layers, ShieldCheck, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { SectionHeader } from "@/components/SectionHeader";
 import { getModelInfo, type ModelInfo } from "@/lib/api";
 
 const STEPS = [
@@ -66,16 +67,6 @@ const FEATURES = [
   },
 ];
 
-function SectionHeader({ eyebrow, title, description }: { eyebrow: string; title: string; description: string }) {
-  return (
-    <div className="mx-auto mb-11 max-w-[620px] text-center">
-      <div className="mb-2.5 text-[0.78rem] font-bold uppercase tracking-[0.12em] text-brand">{eyebrow}</div>
-      <h2 className="mb-3 text-[clamp(1.6rem,3vw,2.2rem)] font-extrabold tracking-[-0.02em]">{title}</h2>
-      <p className="leading-[1.6] text-muted-foreground">{description}</p>
-    </div>
-  );
-}
-
 export function Home() {
   const [info, setInfo] = useState<ModelInfo | null>(null);
 
@@ -88,13 +79,7 @@ export function Home() {
   return (
     <div className="-mt-7">
       {/* Hero */}
-      <section
-        className="hero-aurora rounded-b-[2rem] px-6 py-22 text-center sm:py-28"
-        style={{
-          background:
-            "radial-gradient(60% 50% at 50% 0%, rgba(99,102,241,0.22), transparent 70%), radial-gradient(45% 40% at 85% 10%, rgba(56,189,248,0.16), transparent 70%)",
-        }}
-      >
+      <section className="hero-aurora px-6 py-22 text-center sm:py-28">
         <div className="relative z-2 mx-auto max-w-[760px]">
           <span className="mb-5.5 inline-flex items-center gap-2 rounded-full border border-border bg-white/3 px-3.5 py-1.5 text-[0.78rem] font-bold uppercase tracking-[0.08em] text-brand">
             <span className="pulse-dot" /> Live ML-powered flood intelligence
@@ -123,8 +108,55 @@ export function Home() {
         </div>
       </section>
 
+      <div className="glow-divider mx-auto my-2 w-[min(640px,80%)]" />
+
+      {/* Why this matters */}
+      <section className="relative py-16">
+        <div className="pointer-events-none absolute right-0 top-4 -z-10 h-72 w-72 rounded-full bg-[rgba(239,68,68,0.10)] blur-[100px]" />
+        <div className="glass-panel grid gap-8 overflow-hidden rounded-[20px] p-7 md:grid-cols-[1.1fr_1fr] md:items-center md:p-9">
+          <div>
+            <div className="mb-2.5 text-[0.78rem] font-bold uppercase tracking-[0.12em] text-brand">Why this matters</div>
+            <h2 className="mb-3 text-[clamp(1.6rem,3vw,2.2rem)] font-extrabold tracking-[-0.02em]">
+              Built in the aftermath of <span className="gradient-text">Cyclone Ditwah</span>
+            </h2>
+            <p className="mb-6 leading-[1.7] text-muted-foreground">
+              Cyclone Ditwah brought days of relentless rain to Sri Lanka, swelling rivers, triggering landslides, and
+              submerging entire towns. Families waded through chest-deep floodwater, rescue boats navigated city
+              streets, and communities were cut off for days. FloodGuard AI exists to give people that warning
+              before the water rises.
+            </p>
+            <Button asChild variant="brand-outline" size="lg">
+              <Link to="/impact">
+                See the Ditwah flood impact <ArrowRight className="h-4 w-4" />
+              </Link>
+            </Button>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <img
+              src="/ditwah/ditwah-05-aerial-town.avif"
+              alt="Aerial view of a Sri Lankan town almost entirely submerged by floodwater after Cyclone Ditwah"
+              className="col-span-2 h-44 w-full rounded-[14px] object-cover sm:h-56"
+              loading="lazy"
+            />
+            <img
+              src="/ditwah/ditwah-08-landslide.jpeg"
+              alt="Landslide damage to homes and roads in Sri Lanka after Cyclone Ditwah"
+              className="h-28 w-full rounded-[14px] object-cover sm:h-32"
+              loading="lazy"
+            />
+            <img
+              src="/ditwah/ditwah-07-boat-rescue.jpeg"
+              alt="Rescue boat navigating a flooded city street in Sri Lanka"
+              className="h-28 w-full rounded-[14px] object-cover sm:h-32"
+              loading="lazy"
+            />
+          </div>
+        </div>
+      </section>
+
       {/* How it works */}
-      <section className="py-16">
+      <section className="relative py-16">
+        <div className="pointer-events-none absolute -left-32 top-10 -z-10 h-80 w-80 rounded-full bg-[rgba(99,102,241,0.14)] blur-[100px]" />
         <SectionHeader
           eyebrow="How it works"
           title="From raw inputs to an actionable risk report"
@@ -132,7 +164,7 @@ export function Home() {
         />
         <div className="grid gap-5 [grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
           {STEPS.map((step, i) => (
-            <div key={step.title} className="step-card rounded-[20px] border border-border p-5.5 pt-7">
+            <div key={step.title} className="step-card rounded-[20px] p-5.5 pt-7">
               <span className="mb-3.5 inline-flex h-8.5 w-8.5 items-center justify-center rounded-[10px] bg-gradient-to-br from-brand to-brand-2 text-sm font-extrabold text-[#08111f]">
                 {i + 1}
               </span>
@@ -144,7 +176,8 @@ export function Home() {
       </section>
 
       {/* Features */}
-      <section className="py-16">
+      <section className="relative py-16">
+        <div className="pointer-events-none absolute -right-32 top-20 -z-10 h-96 w-96 rounded-full bg-[rgba(56,189,248,0.12)] blur-[110px]" />
         <SectionHeader
           eyebrow="Built for production"
           title="An MLOps system, not just a model"
@@ -156,9 +189,9 @@ export function Home() {
             return (
               <div
                 key={feature.title}
-                className="rounded-[20px] border border-border bg-card p-6.5 transition-all duration-300 hover:-translate-y-1 hover:border-brand hover:shadow-[0_8px_24px_rgba(2,8,23,0.35)]"
+                className="group glass-panel rounded-[20px] p-6.5 transition-all duration-300 hover:-translate-y-1 hover:border-brand/40 hover:bg-white/[0.045] hover:shadow-[0_8px_32px_rgba(56,189,248,0.18)]"
               >
-                <div className="mb-4.5 flex h-11.5 w-11.5 items-center justify-center rounded-xl bg-brand/12 text-brand">
+                <div className="mb-4.5 flex h-11.5 w-11.5 items-center justify-center rounded-xl bg-brand/12 text-brand transition-colors duration-300 group-hover:bg-brand/20">
                   <Icon className="h-6 w-6" strokeWidth={1.8} />
                 </div>
                 <h3 className="mb-2 text-[1.02rem] font-bold">{feature.title}</h3>
@@ -170,13 +203,14 @@ export function Home() {
       </section>
 
       {/* Live model snapshot */}
-      <section className="py-16">
+      <section className="relative py-16">
+        <div className="pointer-events-none absolute left-1/2 top-1/2 -z-10 h-72 w-[600px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[rgba(99,102,241,0.08)] blur-[110px]" />
         <SectionHeader
           eyebrow="Model snapshot"
           title="Trained on real Sri Lankan flood data"
           description="Live numbers, pulled directly from the currently deployed model artifact."
         />
-        <div className="grid gap-4 rounded-[20px] border border-border bg-card p-7 [grid-template-columns:repeat(auto-fit,minmax(150px,1fr))]">
+        <div className="glass-panel grid gap-4 rounded-[20px] p-7 [grid-template-columns:repeat(auto-fit,minmax(150px,1fr))]">
           <StatPill value={info?.version ?? "–"} label="Model version" />
           <StatPill value={info?.n_features ?? "–"} label="Engineered features" />
           <StatPill value={info ? info.n_rows.toLocaleString() : "–"} label="Training records" />
@@ -185,10 +219,15 @@ export function Home() {
         </div>
       </section>
 
+      <div className="glow-divider mx-auto my-2 w-[min(640px,80%)]" />
+
       {/* CTA */}
       <section
-        className="relative mb-2 overflow-hidden rounded-[20px] border border-border px-6 py-14 text-center"
-        style={{ background: "radial-gradient(60% 80% at 50% 100%, rgba(56,189,248,0.16), transparent 70%), var(--color-panel)" }}
+        className="glass-panel relative mb-2 mt-9 overflow-hidden rounded-[20px] px-6 py-14 text-center"
+        style={{
+          background:
+            "radial-gradient(60% 90% at 50% 100%, rgba(56,189,248,0.22), transparent 70%), radial-gradient(50% 70% at 50% 0%, rgba(99,102,241,0.16), transparent 70%), rgba(255,255,255,0.025)",
+        }}
       >
         <h2 className="mb-3 text-[clamp(1.5rem,3vw,2rem)] font-extrabold tracking-[-0.02em]">Ready to check a location?</h2>
         <p className="mx-auto mb-6.5 max-w-[480px] leading-[1.6] text-muted-foreground">
@@ -205,7 +244,7 @@ export function Home() {
 
 function StatPill({ value, label }: { value: string | number; label: string }) {
   return (
-    <div className="border-b border-border pb-3.5 text-center last:border-b-0 md:border-b-0 md:border-r md:pb-0 md:last:border-r-0">
+    <div className="border-b border-white/8 pb-3.5 text-center last:border-b-0 md:border-b-0 md:border-r md:pb-0 md:last:border-r-0">
       <div className="gradient-text text-[1.7rem] font-extrabold">{value}</div>
       <div className="mt-1.5 text-[0.78rem] uppercase tracking-[0.06em] text-muted-foreground">{label}</div>
     </div>

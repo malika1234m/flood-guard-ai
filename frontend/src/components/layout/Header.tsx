@@ -5,11 +5,12 @@ const navItems = [
   { to: "/", label: "Home" },
   { to: "/predict", label: "Predict" },
   { to: "/dashboard", label: "Dashboard" },
+  { to: "/impact", label: "Impact" },
 ];
 
 export function Header() {
   return (
-    <header className="sticky top-0 z-50 flex items-center justify-between border-b border-border bg-background/70 px-4 py-3.5 backdrop-blur-md sm:px-8 sm:py-4">
+    <header className="sticky top-0 z-50 flex flex-wrap items-center justify-between gap-y-2 border-b border-border bg-background/70 px-4 py-3.5 backdrop-blur-md sm:px-8 sm:py-4">
       <NavLink to="/" className="flex items-center gap-2 whitespace-nowrap text-base font-extrabold tracking-tight text-foreground sm:gap-2.5 sm:text-lg">
         <svg className="h-6.5 w-6.5 shrink-0 sm:h-7.5 sm:w-7.5" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
           <defs>
@@ -29,7 +30,7 @@ export function Header() {
         </svg>
         FloodGuard AI
       </NavLink>
-      <nav className="flex items-center gap-3.5 sm:gap-7">
+      <nav className="flex w-full items-center justify-between gap-3.5 sm:w-auto sm:justify-start sm:gap-7">
         {navItems.map((item) => (
           <NavLink
             key={item.to}
