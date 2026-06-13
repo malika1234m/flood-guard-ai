@@ -28,3 +28,7 @@ mlruns/*/meta.yaml.bak
 # Editor
 .vscode/
 .idea/
+
+# Claude Code agent skills (auto-installed, not project source)
+.agents/
+skills-lock.json

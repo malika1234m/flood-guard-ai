@@ -149,6 +149,12 @@ export function getMonitoringStats() {
   return request<MonitoringStats>("/monitoring/stats");
 }
 
+export const BASE_MODEL_NAMES: Record<string, string> = {
+  lgb: "LightGBM",
+  cat: "CatBoost",
+  xgb: "XGBoost",
+};
+
 export const RISK_COLORS: Record<string, string> = {
   Low: "#22c55e",
   Moderate: "#eab308",

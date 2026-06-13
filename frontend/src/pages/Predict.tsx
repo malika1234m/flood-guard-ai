@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { toast } from "sonner";
-import { Building2, CloudRain, MapPin, SlidersHorizontal } from "lucide-react";
+import { Building2, CloudRain, Droplets, Gauge as GaugeIcon, MapPin, Satellite, SlidersHorizontal } from "lucide-react";
 import { FactorsChart } from "@/components/FactorsChart";
 import { PageHero } from "@/components/PageHero";
 import { RiskGauge } from "@/components/RiskGauge";
@@ -11,6 +11,7 @@ import { FieldGrid, FieldSection, NumberField, SelectField, TextField } from "@/
 import { cn } from "@/lib/utils";
 import { RISK_BADGE_CLASSES } from "@/lib/riskBadge";
 import {
+  BASE_MODEL_NAMES,
   getModelInfo,
   predict,
   sendFeedback,
@@ -121,12 +122,6 @@ const ADVANCED_INDEX_FIELDS = [
   },
 ] as const satisfies readonly { id: keyof FormState; label: string; helper: string }[];
 
-const BASE_MODEL_NAMES: Record<string, string> = {
-  lgb: "LightGBM",
-  cat: "CatBoost",
-  xgb: "XGBoost",
-};
-
 function optionalNumber(value: string): number | null {
   return value.trim() === "" ? null : parseFloat(value);
 }
@@ -235,6 +230,21 @@ export function Predict() {
       <PageHero
         title="Check Your Flood Risk"
         description="Answer a few questions about a location anywhere in Sri Lanka to get an instant risk score, a plain-language explanation, and recommended next steps. The form starts with typical values for a calm day — change anything you know about the location and leave the rest as-is."
+        image="/hero/flood-network-bg.webp"
+        imageAlt="Aerial view of a Sri Lankan coastal town at dusk, overlaid with a glowing AI sensor-network mesh"
+        overlay={
+          <div className="absolute inset-5 z-10 hidden flex-col items-end justify-between sm:flex">
+            <div className="flex items-center gap-2 rounded-full border border-white/15 bg-[#04101f]/45 px-3.5 py-1.5 text-xs font-semibold text-muted-foreground backdrop-blur-md">
+              <span className="pulse-dot" />
+              <Satellite className="h-3.5 w-3.5 text-brand" aria-hidden="true" />
+              AI scanning this location
+            </div>
+            <div className="flex items-center gap-2 rounded-full border border-white/15 bg-[#04101f]/45 px-3.5 py-1.5 text-xs font-semibold text-muted-foreground backdrop-blur-md">
+              <GaugeIcon className="h-3.5 w-3.5 text-brand" aria-hidden="true" />
+              Model v{info?.version ?? "—"}
+            </div>
+          </div>
+        }
       />
 
       <div className="grid grid-cols-1 gap-5.5 lg:grid-cols-[1.1fr_1fr] lg:items-start">
@@ -492,15 +502,18 @@ export function Predict() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="lg:sticky lg:top-22">
           <CardHeader>
             <CardTitle className="text-lg">Result</CardTitle>
           </CardHeader>
           <CardContent>
             {!result ? (
-              <div className="py-15 text-center leading-relaxed text-muted-foreground">
-                Fill in the form and click <strong>Check Flood Risk</strong> to see the risk score, category, and
-                a plain-language report with recommended next steps.
+              <div className="flex flex-col items-center gap-3 py-15 text-center leading-relaxed text-muted-foreground">
+                <Droplets className="h-10 w-10 text-brand/50" strokeWidth={1.5} aria-hidden="true" />
+                <p>
+                  Fill in the form and click <strong>Check Flood Risk</strong> to see the risk score, category, and
+                  a plain-language report with recommended next steps.
+                </p>
               </div>
             ) : (
               <div className="flex flex-col gap-4">

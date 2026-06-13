@@ -36,6 +36,15 @@ function StatCard({ value, label }: { value: string | number; label: string }) {
   );
 }
 
+function HeroTickerStat({ value, label }: { value: string | number; label: string }) {
+  return (
+    <div className="flex items-baseline gap-1.5 whitespace-nowrap">
+      <span className="text-sm font-extrabold tabular-nums">{value}</span>
+      <span className="text-[0.7rem] uppercase tracking-[0.05em] text-muted-foreground">{label}</span>
+    </div>
+  );
+}
+
 function ChartCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <Card>
@@ -180,11 +189,31 @@ export function Dashboard() {
       <PageHero
         title="Monitoring Dashboard"
         description="Live view of prediction volume, score distribution, latency, and user feedback — backed by a local log of every /predict call. Refreshes automatically every 15 seconds."
+        image="/hero/flood-network-bg.webp"
+        imageAlt="Aerial view of a Sri Lankan coastal town at dusk, overlaid with a glowing AI sensor-network mesh"
         action={
           <Button variant="brand-outline" size="sm" onClick={refresh} disabled={refreshing}>
             <RefreshCw className={cn("h-4 w-4", refreshing && "animate-spin")} />
             Refresh
           </Button>
+        }
+        overlay={
+          <>
+            <div className="absolute right-5 top-5 z-10 hidden items-center gap-1.5 rounded-full border border-white/15 bg-[#04101f]/45 px-3.5 py-1.5 text-xs font-semibold text-muted-foreground backdrop-blur-md sm:flex">
+              <span className="pulse-dot" /> Live · refreshes every 15s
+            </div>
+            <div className="absolute inset-x-5 bottom-5 z-10 hidden items-center gap-5 overflow-x-auto rounded-xl border border-white/15 bg-[#04101f]/45 px-4 py-2.5 backdrop-blur-md sm:flex">
+              <HeroTickerStat value={stats?.total_predictions ?? "--"} label="Predictions" />
+              <span className="h-4 w-px shrink-0 bg-white/10" />
+              <HeroTickerStat value={fmt(stats?.avg_score)} label="Avg risk score" />
+              <span className="h-4 w-px shrink-0 bg-white/10" />
+              <HeroTickerStat value={`${fmt(stats?.avg_latency_ms, 1)} ms`} label="Avg latency" />
+              <span className="h-4 w-px shrink-0 bg-white/10" />
+              <HeroTickerStat value={stats?.feedback_count ?? "--"} label="Feedback" />
+              <span className="h-4 w-px shrink-0 bg-white/10" />
+              <HeroTickerStat value={fmt(stats?.avg_user_rating, 2)} label="Avg rating" />
+            </div>
+          </>
         }
       />
 

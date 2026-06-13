@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Activity, ArrowRight, Droplet, GitBranch, Layers, ShieldCheck, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { LiveRiskPreview } from "@/components/LiveRiskPreview";
 import { SectionHeader } from "@/components/SectionHeader";
 import { getModelInfo, type ModelInfo } from "@/lib/api";
 
@@ -79,7 +80,7 @@ export function Home() {
   return (
     <div className="-mt-7">
       {/* Hero */}
-      <section className="hero-aurora px-6 py-22 text-center sm:py-28">
+      <section className="hero-aurora px-6 py-16 text-center sm:py-20">
         <div className="relative z-2 mx-auto max-w-[760px]">
           <img
             src="/logo/floodguard-full-480.png"
@@ -107,6 +108,11 @@ export function Home() {
               <Link to="/dashboard">View live monitoring</Link>
             </Button>
           </div>
+        </div>
+
+        {/* Live product preview */}
+        <div className="relative z-2 mx-auto mt-14 max-w-[1080px] text-left">
+          <LiveRiskPreview />
         </div>
       </section>
 

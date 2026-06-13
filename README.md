@@ -85,10 +85,13 @@ flood-guard-ai/
 ├── models/v1/              trained model artifacts + metadata.json
 ├── mlruns/                  MLflow local tracking store (experiment history)
 ├── app/
-│   ├── main.py              FastAPI app (API + static frontend)
+│   ├── main.py              FastAPI app (API + serves frontend/dist)
 │   ├── schemas.py           pydantic request/response models
-│   ├── monitoring.py        SQLite logging + stats aggregation
-│   └── static/              home.html, index.html, dashboard.html, app.js, style.css
+│   └── monitoring.py        SQLite logging + stats aggregation
+├── frontend/                React + Vite + TypeScript + Tailwind UI
+│   ├── src/pages/           Home, Predict, Dashboard, Impact
+│   ├── src/components/       form fields, charts, risk gauge, live preview, etc.
+│   └── dist/                 production build (generated, served by app/main.py)
 ├── tests/                   pytest suite (features, inference, API)
 ├── conftest.py              shared fixtures
 ├── Dockerfile / .dockerignore / render.yaml
@@ -214,6 +217,9 @@ export ANTHROPIC_API_KEY=sk-...
 # train (reproduces models/v1/ — already included in the repo)
 python -m src.train
 
+# build the frontend (required once — app/main.py serves frontend/dist)
+cd frontend && npm install && npm run build && cd ..
+
 # run the app
 uvicorn app.main:app --reload
 ```
@@ -221,6 +227,10 @@ uvicorn app.main:app --reload
 Open `http://localhost:8000` for the landing page, `http://localhost:8000/predict`
 for the flood risk predictor, `http://localhost:8000/dashboard` for the monitoring
 dashboard, and `http://localhost:8000/docs` for interactive API docs.
+
+For frontend development with hot reload, run `npm run dev` inside `frontend/`
+(Vite dev server on `http://localhost:5173`). Set `VITE_API_BASE_URL=http://localhost:8000`
+in `frontend/.env.local` to point the dev server at the FastAPI backend.
 
 ### Tests
 

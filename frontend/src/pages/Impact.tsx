@@ -63,8 +63,19 @@ export function Impact() {
   return (
     <div>
       <PageHero
+        variant="cover"
         title="Cyclone Ditwah: the disaster behind the mission"
         description="In late 2025, Cyclone Ditwah brought days of torrential rain to Sri Lanka, swelling rivers, triggering landslides, and submerging entire towns. This is what early warning is for."
+        image="/hero/flood-disaster-bridge.webp"
+        imageAlt="Aerial view of a Sri Lankan coastal town submerged by floodwater at dusk, with a lit bridge crossing the water"
+        overlay={
+          <>
+            <div className="absolute inset-0 bg-[radial-gradient(70%_55%_at_50%_25%,rgba(239,68,68,0.16),transparent_70%)]" />
+            <div className="absolute left-5 top-5 z-10 inline-flex items-center gap-2 rounded-full border border-[rgba(239,68,68,0.35)] bg-[#04101f]/45 px-3.5 py-1.5 text-xs font-bold uppercase tracking-[0.08em] text-[#fca5a5] backdrop-blur-md">
+              <span className="h-2 w-2 rounded-full bg-[#ef4444]" /> November 2025 · Severe flooding
+            </div>
+          </>
+        }
       />
 
       {/* Context */}
