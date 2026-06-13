@@ -1,15 +1,22 @@
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { FeatureContribution } from "@/lib/api";
-import { prettify } from "@/lib/api";
+import { factorLabel } from "@/lib/api";
 
 export function FactorsChart({ factors }: { factors: FeatureContribution[] }) {
-  const data = factors.map((f) => ({ name: prettify(f.feature), importance: f.importance }));
+  const max = Math.max(...factors.map((f) => f.importance), 1);
+  const data = factors.map((f) => ({ name: factorLabel(f.feature), influence: Math.round((f.importance / max) * 100) }));
 
   return (
     <ResponsiveContainer width="100%" height={Math.max(220, data.length * 34)}>
       <BarChart data={data} layout="vertical" margin={{ top: 4, right: 16, bottom: 4, left: 8 }}>
         <CartesianGrid stroke="var(--color-line)" horizontal={false} />
-        <XAxis type="number" stroke="var(--color-text-muted)" tick={{ fontSize: 12, fill: "var(--color-text-muted)" }} />
+        <XAxis
+          type="number"
+          domain={[0, 100]}
+          tickFormatter={(v) => `${v}%`}
+          stroke="var(--color-text-muted)"
+          tick={{ fontSize: 12, fill: "var(--color-text-muted)" }}
+        />
         <YAxis
           type="category"
           dataKey="name"
@@ -18,6 +25,7 @@ export function FactorsChart({ factors }: { factors: FeatureContribution[] }) {
           width={150}
         />
         <Tooltip
+          formatter={(value) => [`${value}%`, "Relative influence"]}
           cursor={{ fill: "var(--color-panel-2)" }}
           contentStyle={{
             background: "var(--color-panel-2)",
@@ -27,7 +35,7 @@ export function FactorsChart({ factors }: { factors: FeatureContribution[] }) {
             fontSize: "0.85rem",
           }}
         />
-        <Bar dataKey="importance" name="Model importance" fill="var(--color-brand)" radius={[0, 4, 4, 0]} />
+        <Bar dataKey="influence" name="Relative influence" fill="var(--color-brand)" radius={[0, 4, 4, 0]} />
       </BarChart>
     </ResponsiveContainer>
   );

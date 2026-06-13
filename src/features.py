@@ -1,6 +1,6 @@
 """
-FeatureEngineer: production version of the Initial Round (v10) feature
-pipeline, restructured as a fit/transform object so it can be:
+FeatureEngineer: production feature pipeline, restructured as a
+fit/transform object so it can be:
   - fit once on the training data and saved (`models/v1/feature_engineer.joblib`)
   - applied to new, single-record inputs at inference time
 

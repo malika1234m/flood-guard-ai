@@ -159,3 +159,40 @@ export const RISK_COLORS: Record<string, string> = {
 export function prettify(name: string) {
   return name.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
+
+/**
+ * Plain-language labels for the model's most influential engineered features,
+ * shown in the "What influenced this result" chart on the Predict page.
+ * Anything not listed here falls back to prettify().
+ */
+export const FEATURE_LABELS: Record<string, string> = {
+  district_te: "Typical risk level for this district",
+  inund_log1p: "Current flooding extent",
+  distance_to_river_m: "Distance to nearest river",
+  reason_has_flood: "Active flooding reported",
+  extreme_x_terrain: "Extreme weather & terrain combination",
+  rainfall_7d_mm: "Rainfall, last 7 days",
+  longitude: "Longitude",
+  monthly_rainfall_mm: "Monthly rainfall",
+  nearest_hospital_km: "Distance to nearest hospital",
+  lon_x_river: "Location & river proximity combination",
+  extreme_weather_index: "Extreme weather index",
+  population_density_per_km2: "Population density",
+  rain_x_pop: "Rainfall & population combination",
+  distance_to_river_m_dist_rank: "River proximity, compared with the district",
+  extreme_x_rain: "Extreme weather & rainfall combination",
+  kmeans_5_dist: "Regional risk grouping",
+  geo_cluster_te: "Typical risk level for this area",
+  socio_x_infra: "Socioeconomic & infrastructure combination",
+  ndwi: "Surface water index",
+  latitude: "Latitude",
+  ndvi_x_ndwi: "Vegetation & water combination",
+  seas_x_ndwi: "Seasonal & water combination",
+  ndvi: "Vegetation cover",
+  terrain_roughness_index_dist_rank: "Terrain roughness, compared with the district",
+  knn100_iqr: "Risk variability among similar locations",
+};
+
+export function factorLabel(feature: string) {
+  return FEATURE_LABELS[feature] ?? prettify(feature);
+}

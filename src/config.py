@@ -2,11 +2,11 @@
 Central configuration: paths, column groups, and constants shared across
 the data pipeline, training, and inference code.
 
-This is the production evolution of the Initial Round solution
-(`solution_v10.py`): same target, same custom metric, same feature-
-engineering philosophy (geo/KNN features, district stats, target
-encoding, interaction features), reduced to a 3-model ensemble that can
-be trained quickly and served for single-record predictions.
+This is the production model: same target, same custom metric, same
+feature-engineering philosophy (geo/KNN features, district stats, target
+encoding, interaction features) as the earlier research prototype
+(`solution_v10.py`), reduced to a 3-model ensemble that can be trained
+quickly and served for single-record predictions.
 """
 from pathlib import Path
 

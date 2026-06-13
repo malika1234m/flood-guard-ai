@@ -1,9 +1,9 @@
 """
 Production training pipeline for the flood-risk model.
 
-Evolution of `solution_v10.py` (Initial Round): same feature-engineering
-philosophy and the same winning ideas (ensemble + Ridge meta-stack +
-mean calibration), reduced from a 5-model / 10-fold / multi-seed /
+Builds on the feature-engineering philosophy and core ideas (ensemble +
+Ridge meta-stack + mean calibration) from an earlier research prototype
+(`solution_v10.py`), reduced from a 5-model / 10-fold / multi-seed /
 pseudo-labeling search to a 3-model / 5-fold ensemble with fixed,
 well-chosen hyperparameters so it (a) trains in minutes, and (b) produces
 artifacts that `src/inference.py` can load to score a single new record.
@@ -139,7 +139,7 @@ def main():
         print(f"Ridge weights: {dict(zip(oof.keys(), meta.coef_.round(4)))}")
         mlflow.log_metric("oof_ensemble", ensemble_metric)
 
-        # Mean-calibration shift (key insight from Initial Round analysis)
+        # Mean-calibration shift (key insight from earlier model analysis)
         train_mean = float(y.mean())
         pred_mean = float(meta_oof.mean())
         shift = train_mean - pred_mean

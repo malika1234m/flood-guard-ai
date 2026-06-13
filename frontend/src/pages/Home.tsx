@@ -9,61 +9,61 @@ const STEPS = [
   {
     title: "Describe a location",
     description:
-      "Enter geography, climate, land cover, infrastructure, and socioeconomic details — or start from a district average.",
+      "Tell us about the geography, climate, land cover, infrastructure, and community of a location — or start from typical values and adjust what you know.",
   },
   {
-    title: "223 engineered features",
+    title: "Compared with historical records",
     description:
-      "A fit/transform feature pipeline reproduces district stats, KMeans clusters, KNN flood-history, and target encodings for that single record.",
+      "Your inputs are checked against decades of district-level rainfall, terrain, and flood-history data to understand how this location compares.",
   },
   {
-    title: "Stacked ensemble score",
+    title: "Multi-model risk score",
     description:
-      "LightGBM, CatBoost, and XGBoost predictions are combined by a Ridge meta-model and calibrated to produce a 0–1 risk score.",
+      "Several machine-learning models analyze the data independently. Their results are combined and calibrated into one clear risk score from 0 to 1.",
   },
   {
     title: "AI risk report & monitoring",
     description:
-      "An AI advisor explains the score and top factors in plain language, while every request is logged to the live dashboard.",
+      "An AI advisor explains the score and the leading factors in plain language, with recommended next steps — while every assessment is tracked on a live dashboard.",
   },
 ];
 
 const FEATURES = [
   {
     icon: Layers,
-    title: "Stacked ensemble model",
+    title: "Multi-model risk engine",
     description:
-      "LightGBM, CatBoost, and XGBoost predictions are combined with a Ridge meta-learner and a mean-calibration shift, carrying forward the winning Initial Round approach.",
+      "Three independent machine-learning models cross-check each other, and the combined result is calibrated against real flood outcomes from across Sri Lanka for a dependable score.",
   },
   {
     icon: Droplet,
-    title: "Single-record feature pipeline",
+    title: "Tailored to each location",
     description:
-      "A fit/transform FeatureEngineer turns batch-only feature engineering — district stats, clustering, KNN, target encoding — into millisecond inference.",
+      "Every assessment is automatically enriched with district climate, terrain, and historical flood patterns — so you get a result tailored to that exact spot, not a generic estimate.",
   },
   {
     icon: Sparkles,
     title: "AI-generated risk reports",
     description:
-      "Claude turns the score and top contributing factors into a plain-language summary and recommended actions, with a deterministic template fallback.",
+      "Every result includes a plain-language summary of the score and the factors behind it, plus recommended actions — written for residents and decision-makers, not data scientists.",
   },
   {
     icon: Activity,
     title: "Live monitoring dashboard",
     description:
-      "Every prediction is logged to SQLite and visualized — volume, score distribution, risk categories, latency, and user feedback.",
+      "Every assessment is logged and visualized in real time — usage trends, score distribution, risk levels, and response times — so service performance is always visible.",
   },
   {
     icon: GitBranch,
-    title: "Versioned experiments",
+    title: "Continuously improved",
     description:
-      "MLflow tracks hyperparameters, fold metrics, and artifacts for every training run, so model versions can be compared directly.",
+      "Every model version is tracked and benchmarked against the last, so accuracy improvements are measured over time, not assumed.",
   },
   {
     icon: ShieldCheck,
-    title: "Validation & CI/CD",
+    title: "Tested & validated",
     description:
-      "Schema and range checks run before training, out-of-distribution flags run at inference, and GitHub Actions runs the test suite on every push.",
+      "Incoming data is checked for plausible ranges, unusual locations are flagged automatically, and the full system is tested before every update goes live.",
   },
 ];
 
@@ -81,21 +81,23 @@ export function Home() {
       {/* Hero */}
       <section className="hero-aurora px-6 py-22 text-center sm:py-28">
         <div className="relative z-2 mx-auto max-w-[760px]">
+          <img
+            src="/logo/floodguard-full-480.png"
+            alt="FloodGuard AI — Flood Alert & Prediction System"
+            className="mx-auto mb-6 h-16 rounded-2xl bg-white/95 px-5 py-3 shadow-[0_8px_32px_rgba(0,0,0,0.25)] sm:h-20"
+          />
           <span className="mb-5.5 inline-flex items-center gap-2 rounded-full border border-border bg-white/3 px-3.5 py-1.5 text-[0.78rem] font-bold uppercase tracking-[0.08em] text-brand">
             <span className="pulse-dot" /> Live ML-powered flood intelligence
           </span>
           <h1 className="mb-4.5 text-[clamp(2.4rem,5vw,3.6rem)] font-extrabold leading-[1.12] tracking-[-0.03em]">
-            <span className="mb-1.5 block font-serif text-[clamp(1.05rem,2.2vw,1.5rem)] font-medium italic tracking-[0.06em] text-muted-foreground">
-              FloodGuard<span className="ml-1 text-brand">/</span>
-            </span>
             Know your flood risk
             <br />
             <span className="gradient-text font-serif font-semibold italic tracking-[-0.01em]">before the water rises.</span>
           </h1>
           <p className="mx-auto mb-9 max-w-[600px] text-[1.1rem] leading-[1.7] text-muted-foreground">
-            FloodGuard AI scores flood risk for any location in Sri Lanka in milliseconds, explains the result in
-            plain language, and tracks every prediction on a live monitoring dashboard — a complete
-            model-to-production system built on the ML Opsidian: Genesis Initial Round model.
+            FloodGuard AI scores flood risk for any location in Sri Lanka in seconds, explains the result in
+            plain language, and gives you clear next steps — so residents, local authorities, and businesses
+            can prepare before the water rises.
           </p>
           <div className="mb-2 flex flex-wrap items-center justify-center gap-3.5">
             <Button asChild variant="gradient" size="xl">
@@ -160,7 +162,7 @@ export function Home() {
         <SectionHeader
           eyebrow="How it works"
           title="From raw inputs to an actionable risk report"
-          description="Every request runs through the same pipeline that powers the Initial Round model — rebuilt to score one location at a time, in real time."
+          description="Every assessment runs through the same data pipeline and models described below — built to score one location at a time, in real time."
         />
         <div className="grid gap-5 [grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
           {STEPS.map((step, i) => (
@@ -208,14 +210,13 @@ export function Home() {
         <SectionHeader
           eyebrow="Model snapshot"
           title="Trained on real Sri Lankan flood data"
-          description="Live numbers, pulled directly from the currently deployed model artifact."
+          description="Live numbers from the model currently powering every assessment on this site."
         />
         <div className="glass-panel grid gap-4 rounded-[20px] p-7 [grid-template-columns:repeat(auto-fit,minmax(150px,1fr))]">
           <StatPill value={info?.version ?? "–"} label="Model version" />
-          <StatPill value={info?.n_features ?? "–"} label="Engineered features" />
-          <StatPill value={info ? info.n_rows.toLocaleString() : "–"} label="Training records" />
-          <StatPill value={info ? info.metrics.oof_calibrated.toFixed(3) : "–"} label="OOF custom metric" />
-          <StatPill value={info?.n_folds ?? "–"} label="Cross-validation folds" />
+          <StatPill value={info?.categorical_options.district.length ?? "–"} label="Districts covered" />
+          <StatPill value={info ? info.n_rows.toLocaleString() : "–"} label="Historical records analyzed" />
+          <StatPill value={info?.n_folds ?? "–"} label="Independent validation rounds" />
         </div>
       </section>
 

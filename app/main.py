@@ -126,11 +126,9 @@ def monitoring_stats():
 app.mount("/assets", StaticFiles(directory=str(FRONTEND_DIST / "assets")), name="assets")
 
 
-@app.get("/favicon.svg", include_in_schema=False)
-def favicon():
-    return FileResponse(str(FRONTEND_DIST / "favicon.svg"))
-
-
 @app.get("/{full_path:path}", response_class=FileResponse, include_in_schema=False)
 def spa(full_path: str):
+    candidate = FRONTEND_DIST / full_path
+    if full_path and candidate.is_file():
+        return FileResponse(str(candidate))
     return FileResponse(str(FRONTEND_DIST / "index.html"))

@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { toast } from "sonner";
+import { Building2, CloudRain, MapPin, SlidersHorizontal } from "lucide-react";
 import { FactorsChart } from "@/components/FactorsChart";
 import { PageHero } from "@/components/PageHero";
 import { RiskGauge } from "@/components/RiskGauge";
@@ -98,11 +99,33 @@ const CATEGORICAL_FIELDS = [
 ] as const satisfies readonly (keyof FormState)[];
 
 const ADVANCED_INDEX_FIELDS = [
-  { id: "seasonal_index", label: "Seasonal index" },
-  { id: "terrain_roughness_index", label: "Terrain roughness index" },
-  { id: "socioeconomic_status_index", label: "Socioeconomic status index" },
-  { id: "extreme_weather_index", label: "Extreme weather index" },
-] as const satisfies readonly { id: keyof FormState; label: string }[];
+  {
+    id: "seasonal_index",
+    label: "Seasonal flood-risk index",
+    helper: "Reflects how flood-prone the current season typically is in this district.",
+  },
+  {
+    id: "terrain_roughness_index",
+    label: "Terrain roughness index",
+    helper: "Describes how uneven or hilly the surrounding land is.",
+  },
+  {
+    id: "socioeconomic_status_index",
+    label: "Socioeconomic index",
+    helper: "A general measure of the area's economic development and living standards.",
+  },
+  {
+    id: "extreme_weather_index",
+    label: "Extreme weather index",
+    helper: "Reflects how often this district experiences extreme weather events.",
+  },
+] as const satisfies readonly { id: keyof FormState; label: string; helper: string }[];
+
+const BASE_MODEL_NAMES: Record<string, string> = {
+  lgb: "LightGBM",
+  cat: "CatBoost",
+  xgb: "XGBoost",
+};
 
 function optionalNumber(value: string): number | null {
   return value.trim() === "" ? null : parseFloat(value);
@@ -210,65 +233,203 @@ export function Predict() {
   return (
     <div>
       <PageHero
-        title="Flood Risk Predictor & AI Advisor"
-        description="Enter conditions for a location in Sri Lanka to get a flood-risk score (0-1) from our LightGBM + CatBoost + XGBoost ensemble, plus a plain-language AI risk report with recommended actions. Fields left at their defaults represent a calm, no-event baseline."
+        title="Check Your Flood Risk"
+        description="Answer a few questions about a location anywhere in Sri Lanka to get an instant risk score, a plain-language explanation, and recommended next steps. The form starts with typical values for a calm day — change anything you know about the location and leave the rest as-is."
       />
 
       <div className="grid grid-cols-1 gap-5.5 lg:grid-cols-[1.1fr_1fr] lg:items-start">
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Location &amp; Conditions</CardTitle>
+            <CardTitle className="text-lg">About the Location</CardTitle>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit}>
-              <FieldSection title="Location">
+              <FieldSection title="Location" icon={MapPin} description="Pinpoint the location on a map, or use your best estimate for the area.">
                 <FieldGrid>
                   <SelectField id="district" label="District" value={form.district} onChange={set("district")} options={options?.district ?? []} />
-                  <SelectField id="urban_rural" label="Urban / Rural" value={form.urban_rural} onChange={set("urban_rural")} options={options?.urban_rural ?? []} />
-                  <NumberField id="latitude" label="Latitude" value={form.latitude} onChange={set("latitude")} step="0.0001" required />
-                  <NumberField id="longitude" label="Longitude" value={form.longitude} onChange={set("longitude")} step="0.0001" required />
-                  <SelectField id="landcover" label="Land cover" value={form.landcover} onChange={set("landcover")} options={options?.landcover ?? []} />
-                  <SelectField id="soil_type" label="Soil type" value={form.soil_type} onChange={set("soil_type")} options={options?.soil_type ?? []} />
+                  <SelectField id="urban_rural" label="Urban or rural" value={form.urban_rural} onChange={set("urban_rural")} options={options?.urban_rural ?? []} />
+                  <NumberField
+                    id="latitude"
+                    label="Latitude"
+                    value={form.latitude}
+                    onChange={set("latitude")}
+                    step="0.0001"
+                    required
+                    helperText="Right-click the location on Google Maps and copy the first number shown."
+                  />
+                  <NumberField
+                    id="longitude"
+                    label="Longitude"
+                    value={form.longitude}
+                    onChange={set("longitude")}
+                    step="0.0001"
+                    required
+                    helperText="The second number from the same map coordinates."
+                  />
+                  <SelectField
+                    id="landcover"
+                    label="Land cover"
+                    value={form.landcover}
+                    onChange={set("landcover")}
+                    options={options?.landcover ?? []}
+                    helperText="What mostly covers the ground here."
+                  />
+                  <SelectField
+                    id="soil_type"
+                    label="Soil type"
+                    value={form.soil_type}
+                    onChange={set("soil_type")}
+                    options={options?.soil_type ?? []}
+                    helperText="The dominant soil type in the area, if known."
+                  />
                 </FieldGrid>
               </FieldSection>
 
-              <FieldSection title="Environment">
+              <FieldSection title="Climate & Terrain" icon={CloudRain} description="Rainfall, ground conditions, and vegetation around the location.">
                 <FieldGrid>
-                  <NumberField id="elevation_m" label="Elevation (m)" value={form.elevation_m} onChange={set("elevation_m")} step="0.1" required />
-                  <NumberField id="distance_to_river_m" label="Distance to river (m)" value={form.distance_to_river_m} onChange={set("distance_to_river_m")} step="1" required />
-                  <NumberField id="rainfall_7d_mm" label="Rainfall, last 7 days (mm)" value={form.rainfall_7d_mm} onChange={set("rainfall_7d_mm")} step="0.1" required />
-                  <NumberField id="monthly_rainfall_mm" label="Monthly rainfall (mm)" value={form.monthly_rainfall_mm} onChange={set("monthly_rainfall_mm")} step="0.1" required />
-                  <NumberField id="drainage_index" label="Drainage index (0-2)" value={form.drainage_index} onChange={set("drainage_index")} step="0.01" required />
-                  <NumberField id="historical_flood_count" label="Historical flood count" value={form.historical_flood_count} onChange={set("historical_flood_count")} step="1" required />
-                  <NumberField id="ndvi" label="NDVI (vegetation, -1 to 1)" value={form.ndvi} onChange={set("ndvi")} step="0.01" required />
-                  <NumberField id="ndwi" label="NDWI (surface water, -1 to 1)" value={form.ndwi} onChange={set("ndwi")} step="0.01" required />
-                  <SelectField id="water_presence_flag" label="Water body nearby?" value={form.water_presence_flag} onChange={set("water_presence_flag")} options={options?.water_presence_flag ?? []} />
+                  <NumberField
+                    id="elevation_m"
+                    label="Elevation (m)"
+                    value={form.elevation_m}
+                    onChange={set("elevation_m")}
+                    step="0.1"
+                    required
+                    helperText="Height above sea level. Lower-lying areas are generally at higher risk."
+                  />
+                  <NumberField
+                    id="distance_to_river_m"
+                    label="Distance to nearest river (m)"
+                    value={form.distance_to_river_m}
+                    onChange={set("distance_to_river_m")}
+                    step="1"
+                    required
+                  />
+                  <NumberField
+                    id="rainfall_7d_mm"
+                    label="Rainfall, last 7 days (mm)"
+                    value={form.rainfall_7d_mm}
+                    onChange={set("rainfall_7d_mm")}
+                    step="0.1"
+                    required
+                    helperText="Total rainfall recorded in this area over the past week."
+                  />
+                  <NumberField
+                    id="monthly_rainfall_mm"
+                    label="Typical monthly rainfall (mm)"
+                    value={form.monthly_rainfall_mm}
+                    onChange={set("monthly_rainfall_mm")}
+                    step="0.1"
+                    required
+                  />
+                  <NumberField
+                    id="drainage_index"
+                    label="Drainage quality (0-2)"
+                    value={form.drainage_index}
+                    onChange={set("drainage_index")}
+                    step="0.01"
+                    required
+                    helperText="How well rainwater drains away. 0 = very poor, water pools easily. 2 = excellent."
+                  />
+                  <NumberField
+                    id="historical_flood_count"
+                    label="Past flooding events"
+                    value={form.historical_flood_count}
+                    onChange={set("historical_flood_count")}
+                    step="1"
+                    required
+                    helperText="How many times this area has flooded in recorded history."
+                  />
+                  <NumberField
+                    id="ndvi"
+                    label="Vegetation cover (NDVI, -1 to 1)"
+                    value={form.ndvi}
+                    onChange={set("ndvi")}
+                    step="0.01"
+                    required
+                    helperText="How green the area is. -1 = bare ground or water, 1 = dense vegetation. Most land: 0.2 to 0.6."
+                  />
+                  <NumberField
+                    id="ndwi"
+                    label="Surface water index (NDWI, -1 to 1)"
+                    value={form.ndwi}
+                    onChange={set("ndwi")}
+                    step="0.01"
+                    required
+                    helperText="How much open water is visible. -1 = dry land, 1 = mostly water. Most land: -0.2 to 0.2."
+                  />
+                  <SelectField
+                    id="water_presence_flag"
+                    label="Water body directly nearby?"
+                    value={form.water_presence_flag}
+                    onChange={set("water_presence_flag")}
+                    options={options?.water_presence_flag ?? []}
+                    helperText="Is there a river, lake, or reservoir right next to this location?"
+                  />
                 </FieldGrid>
               </FieldSection>
 
-              <FieldSection title="Infrastructure & Socioeconomic">
+              <FieldSection title="Community & Infrastructure" icon={Building2} description="The people, buildings, and services around this location.">
                 <FieldGrid>
-                  <NumberField id="population_density_per_km2" label="Population density (per km²)" value={form.population_density_per_km2} onChange={set("population_density_per_km2")} step="1" required />
-                  <NumberField id="built_up_percent" label="Built-up land (%)" value={form.built_up_percent} onChange={set("built_up_percent")} step="0.1" required />
-                  <NumberField id="infrastructure_score" label="Infrastructure score (0-100)" value={form.infrastructure_score} onChange={set("infrastructure_score")} step="0.1" required />
+                  <NumberField
+                    id="population_density_per_km2"
+                    label="Population density (people/km²)"
+                    value={form.population_density_per_km2}
+                    onChange={set("population_density_per_km2")}
+                    step="1"
+                    required
+                    helperText="Roughly how many people live in each square kilometer of this area."
+                  />
+                  <NumberField
+                    id="built_up_percent"
+                    label="Built-up land (%)"
+                    value={form.built_up_percent}
+                    onChange={set("built_up_percent")}
+                    step="0.1"
+                    required
+                    helperText="Share of the area covered by buildings and roads, rather than open land."
+                  />
+                  <NumberField
+                    id="infrastructure_score"
+                    label="Infrastructure quality (0-100)"
+                    value={form.infrastructure_score}
+                    onChange={set("infrastructure_score")}
+                    step="0.1"
+                    required
+                    helperText="Overall quality of roads, utilities, and buildings. 0 = very poor, 100 = excellent."
+                  />
                   <SelectField id="water_supply" label="Water supply" value={form.water_supply} onChange={set("water_supply")} options={options?.water_supply ?? []} />
-                  <SelectField id="electricity" label="Electricity" value={form.electricity} onChange={set("electricity")} options={options?.electricity ?? []} />
+                  <SelectField id="electricity" label="Electricity access" value={form.electricity} onChange={set("electricity")} options={options?.electricity ?? []} />
                   <SelectField id="road_quality" label="Road quality" value={form.road_quality} onChange={set("road_quality")} options={options?.road_quality ?? []} />
-                  <NumberField id="nearest_hospital_km" label="Nearest hospital (km)" value={form.nearest_hospital_km} onChange={set("nearest_hospital_km")} step="0.1" required />
-                  <NumberField id="nearest_evac_km" label="Nearest evacuation center (km)" value={form.nearest_evac_km} onChange={set("nearest_evac_km")} step="0.1" required />
+                  <NumberField
+                    id="nearest_hospital_km"
+                    label="Distance to nearest hospital (km)"
+                    value={form.nearest_hospital_km}
+                    onChange={set("nearest_hospital_km")}
+                    step="0.1"
+                    required
+                  />
+                  <NumberField
+                    id="nearest_evac_km"
+                    label="Distance to nearest evacuation center (km)"
+                    value={form.nearest_evac_km}
+                    onChange={set("nearest_evac_km")}
+                    step="0.1"
+                    required
+                  />
                 </FieldGrid>
               </FieldSection>
 
-              <details className="mt-4.5 rounded-[10px] border border-border bg-white/[0.02] px-3.5 py-2">
-                <summary className="cursor-pointer py-1.5 font-semibold text-brand">
-                  Advanced: current event &amp; composite indices (optional)
+              <details className="mt-6 rounded-[10px] border border-border bg-white/[0.02] px-3.5 py-2">
+                <summary className="flex cursor-pointer items-center gap-2 py-1.5 font-semibold text-brand">
+                  <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
+                  More options: current conditions &amp; fine-tuning (optional)
                 </summary>
 
-                <FieldSection title="Current event">
+                <FieldSection title="Right now" description="If flooding is already happening at this location, add the details here.">
                   <FieldGrid>
                     <SelectField
                       id="flood_occurrence_current_event"
-                      label="Flooding happening right now?"
+                      label="Is flooding happening right now?"
                       value={form.flood_occurrence_current_event}
                       onChange={set("flood_occurrence_current_event")}
                       options={["No", "Yes"]}
@@ -276,18 +437,20 @@ export function Predict() {
                     {form.flood_occurrence_current_event === "Yes" && (
                       <NumberField
                         id="inundation_area_sqm"
-                        label="Inundated area (sq. m)"
+                        label="Approximate flooded area (sq. m)"
                         value={form.inundation_area_sqm}
                         onChange={set("inundation_area_sqm")}
                         step="1"
+                        helperText="Roughly how much land is currently underwater."
                       />
                     )}
                     <SelectField
                       id="is_good_to_live"
-                      label="Currently considered good to live?"
+                      label="Is this location currently livable?"
                       value={form.is_good_to_live}
                       onChange={set("is_good_to_live")}
                       options={["Yes", "No"]}
+                      helperText="Leave as 'Yes' unless there's a serious, ongoing issue such as prolonged flooding."
                     />
                     {form.is_good_to_live === "No" && (
                       <TextField
@@ -301,9 +464,12 @@ export function Predict() {
                   </FieldGrid>
                 </FieldSection>
 
-                <FieldSection title="Composite indices (auto-filled from district averages)">
+                <FieldSection
+                  title="Local fine-tuning"
+                  description="These advanced figures are filled in automatically using typical values for the selected district. Only change them if you have more accurate local data."
+                >
                   <FieldGrid>
-                    {ADVANCED_INDEX_FIELDS.map(({ id, label }) => (
+                    {ADVANCED_INDEX_FIELDS.map(({ id, label, helper }) => (
                       <NumberField
                         key={id}
                         id={id}
@@ -312,6 +478,7 @@ export function Predict() {
                         onChange={set(id)}
                         step="0.0001"
                         placeholder={placeholderFor(id)}
+                        helperText={helper}
                       />
                     ))}
                   </FieldGrid>
@@ -319,7 +486,7 @@ export function Predict() {
               </details>
 
               <Button type="submit" variant="gradient" size="xl" className="mt-4.5 w-full" disabled={loading}>
-                {loading ? "Assessing…" : "Assess Flood Risk"}
+                {loading ? "Checking…" : "Check Flood Risk"}
               </Button>
             </form>
           </CardContent>
@@ -332,35 +499,29 @@ export function Predict() {
           <CardContent>
             {!result ? (
               <div className="py-15 text-center leading-relaxed text-muted-foreground">
-                Fill in the form and click <strong>Assess Flood Risk</strong> to see the predicted score, risk
-                category, and AI-generated recommendations.
+                Fill in the form and click <strong>Check Flood Risk</strong> to see the risk score, category, and
+                a plain-language report with recommended next steps.
               </div>
             ) : (
               <div className="flex flex-col gap-4">
                 <div className="mb-1.5 flex flex-col items-center gap-2">
                   <RiskGauge score={result.flood_risk_score} category={result.risk_category} animationKey={result.prediction_id} />
                   <span className={cn("inline-block rounded-full px-3.5 py-1 text-[0.85rem] font-bold tracking-[0.03em]", RISK_BADGE_CLASSES[result.risk_category])}>
-                    {result.risk_category}
+                    {result.risk_category} risk
                   </span>
-                  <div className="flex flex-wrap justify-center gap-3.5 text-[0.82rem] text-muted-foreground">
-                    {Object.entries(result.base_model_scores).map(([k, v]) => (
-                      <span key={k}>
-                        {k.toUpperCase()}: {v.toFixed(3)}
-                      </span>
-                    ))}
-                  </div>
                 </div>
 
                 {result.ood_flags.length > 0 && (
                   <div className="rounded-lg border border-[rgba(249,115,22,0.35)] bg-[rgba(249,115,22,0.12)] px-3 py-2.5 text-[0.82rem] text-[#fdba74]">
-                    <strong>Note:</strong> Some inputs are outside the typical training range — {result.ood_flags.join("; ")}
+                    <strong>Note:</strong> Some inputs are outside the typical range seen in our data —{" "}
+                    {result.ood_flags.join("; ")}
                   </div>
                 )}
 
                 {result.ai_report && (
                   <div className="rounded-[10px] border border-border bg-panel-2 px-4 py-3.5">
                     <span className="mb-2 block text-[0.7rem] uppercase tracking-[0.06em] text-muted-foreground">
-                      {result.ai_report.source === "llm" ? "AI-generated (Claude)" : "Generated from a rule-based template"}
+                      AI-generated risk report
                     </span>
                     <p className="leading-relaxed">{result.ai_report.summary}</p>
                     <ul className="mt-2 list-disc space-y-1.5 pl-5 leading-relaxed">
@@ -372,14 +533,32 @@ export function Predict() {
                 )}
 
                 <div>
-                  <h3 className="mb-2 text-[0.95rem] font-semibold uppercase tracking-[0.04em] text-muted-foreground">
-                    Top contributing factors
+                  <h3 className="mb-1 text-[0.95rem] font-semibold uppercase tracking-[0.04em] text-muted-foreground">
+                    What influenced this result
                   </h3>
+                  <p className="mb-2.5 text-[0.82rem] leading-snug text-muted-foreground/80">
+                    These factors had the biggest impact on the score for this location.
+                  </p>
                   <FactorsChart factors={result.top_factors} />
                 </div>
 
+                <details className="rounded-[10px] border border-border bg-white/[0.02] px-3.5 py-2 text-[0.82rem] text-muted-foreground">
+                  <summary className="cursor-pointer py-1.5 font-semibold text-brand">Technical details</summary>
+                  <div className="space-y-1.5 py-2">
+                    <p>Model version: {result.model_version}</p>
+                    <p>Response time: {result.latency_ms.toFixed(0)} ms</p>
+                    <div className="flex flex-wrap gap-3.5 pt-1">
+                      {Object.entries(result.base_model_scores).map(([k, v]) => (
+                        <span key={k}>
+                          {BASE_MODEL_NAMES[k] ?? k.toUpperCase()}: {v.toFixed(3)}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </details>
+
                 <div className="flex flex-wrap items-center gap-3.5 border-t border-border pt-3.5">
-                  <span className="text-sm">Was this useful? Rate it:</span>
+                  <span className="text-sm">Was this helpful? Rate it:</span>
                   <StarRating value={rating} onChange={handleRate} />
                   {feedbackSent && <span className="text-[0.85rem] text-risk-low">Thanks for your feedback!</span>}
                 </div>
