@@ -1,0 +1,36 @@
+flowchart LR
+    subgraph Client
+        UI["Web UI (React/Vite)\nprediction form + dashboard"]
+        MOB["Mobile app (Expo / React Native)\nHome / Predict / Dashboard"]
+        GEO["Client-side geolocation\nhaversine nearest-district match"]
+    end
+
+    subgraph svc ["FastAPI service — single Docker image, deployed on Railway"]
+        API[REST API\n/predict /health /model/info\n/feedback /monitoring/stats]
+        DP[(district_profiles.json\n25 districts)]
+        FE[FeatureEngineer\n223 engineered features]
+        ENS["Ensemble\nLightGBM + CatBoost + XGBoost\n+ Ridge meta-stack + calibration"]
+        LLM["LLM Risk Advisor\nClaude haiku-4.5, template fallback"]
+        MON[(SQLite\nmonitoring.db)]
+        DASH[Monitoring dashboard]
+    end
+
+    UI -- "HTTP" --> API
+    MOB -- "HTTP" --> API
+    UI --> GEO
+    MOB --> GEO
+    GEO -. "/model/info" .-> DP
+    API --> FE --> ENS --> API
+    API --> LLM --> API
+    API --> MON --> DASH
+    DASH -- "HTTP" --> UI
+
+    subgraph offline ["Offline training (src/train.py)"]
+        TRAIN[Train pipeline]
+        MLF[(MLflow tracking\nmlruns/)]
+        ART["models/v1/\nartifacts + metadata.json"]
+    end
+    TRAIN --> MLF
+    TRAIN --> ART
+    ART -. "loaded at\nstartup" .-> FE
+    ART -. "loaded at\nstartup" .-> ENS

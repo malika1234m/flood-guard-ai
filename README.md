@@ -323,4 +323,13 @@ npx expo start --web  # run in the browser
 
 ## 11. Team
 
-- _Add team member names / roles here._
+**Team Name:** _[Add team name]_
+
+| Member | Role |
+|---|---|
+| _[Add name]_ | ML / Feature Engineering |
+| _[Add name]_ | MLOps / Deployment |
+| _[Add name]_ | Frontend / AI Advisor |
+| _[Add name]_ | Presentation |
+
+_Submission for **ML Opsidian: Genesis — Final Round**._

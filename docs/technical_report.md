@@ -11,7 +11,10 @@ model for Sri Lanka into a deployed product. It packages a 223-feature, 3-model
 ensemble (the production evolution of the Initial Round's winning ideas) behind a
 FastAPI service that serves a prediction form, a REST API, an AI-generated risk
 report (Claude, with a deterministic fallback), and a live monitoring dashboard —
-all from a single Docker image deployed on Render.
+all from a single Docker image deployed on Railway. A companion **Expo /
+React Native mobile app** (Android APK + Expo Go) talks to the same live backend
+and adds a geolocation-based "what's the risk where I am right now" preview on
+both clients.
 
 This report covers Problem Understanding, System Architecture, the Machine
 Learning Approach (Initial Round summary and Final Round improvements), and MLOps
@@ -104,11 +107,14 @@ had to be re-engineered for production:
 ```mermaid
 flowchart LR
     subgraph Client
-        UI[Web UI\nprediction form + dashboard]
+        UI["Web UI (React/Vite)\nprediction form + dashboard"]
+        MOB["Mobile app (Expo / React Native)\nHome / Predict / Dashboard"]
+        GEO["Client-side geolocation\nhaversine nearest-district match"]
     end
 
-    subgraph svc ["FastAPI service — single Docker image, deployed on Render"]
+    subgraph svc ["FastAPI service — single Docker image, deployed on Railway"]
         API[REST API\n/predict /health /model/info\n/feedback /monitoring/stats]
+        DP[(district_profiles.json\n25 districts)]
         FE[FeatureEngineer\n223 engineered features]
         ENS["Ensemble\nLightGBM + CatBoost + XGBoost\n+ Ridge meta-stack + calibration"]
         LLM["LLM Risk Advisor\nClaude haiku-4.5, template fallback"]
@@ -117,6 +123,10 @@ flowchart LR
     end
 
     UI -- "HTTP" --> API
+    MOB -- "HTTP" --> API
+    UI --> GEO
+    MOB --> GEO
+    GEO -. "/model/info" .-> DP
     API --> FE --> ENS --> API
     API --> LLM --> API
     API --> MON --> DASH
@@ -158,6 +168,14 @@ flowchart LR
 
 **Online (serving) path:**
 
+0. **On page load** (web or mobile), the client requests Geolocation permission.
+   If granted, `frontend/src/lib/geo.ts` runs a haversine nearest-neighbor match
+   against the 25 real district centroids in `models/v1/district_profiles.json`
+   (fetched once via `GET /model/info`) and renders a **Live Risk Preview** for
+   the user's own district using that district's typical conditions — entirely
+   client-side, with zero extra network round-trips. If permission is denied or
+   unavailable, the UI falls back to a fixed Galle example with a retry option.
+   See §2.3.
 1. On startup, `app/main.py`'s `lifespan` loads a `FloodRiskPredictor`
    (`src/inference.py`), which deserializes every artifact in `models/v1/`.
 2. A user submits the prediction form (or calls `POST /predict` directly). The
@@ -177,6 +195,40 @@ flowchart LR
    **SQLite** (`app/monitoring.py`) and the response returned to the client.
 8. `/monitoring/stats` aggregates the SQLite log for the `/dashboard` page
    (score distribution, category/district breakdowns, latency, user feedback).
+
+## 2.3 Client Applications: Web & Mobile
+
+FloodGuard AI ships **two clients against the same Railway backend**, satisfying
+both the "Web Application" and "Mobile Application" tracks from a single API:
+
+- **Web** (`frontend/`): React + Vite + TypeScript + Tailwind/shadcn-ui, built to
+  `frontend/dist/` and served directly by the FastAPI app (`app/main.py` mounts
+  `/assets` via `StaticFiles` and serves `index.html` for any other path via a
+  catch-all SPA route) — same-origin, no CORS, one URL for the whole product.
+- **Mobile** (`mobile/`): Expo SDK 56 + expo-router (React Native), with Home,
+  Predict, and Dashboard screens mirroring the web app's functionality, built
+  with a more native interaction model (swipeable carousels, a multi-step
+  Predict wizard, segmented tabs on the Dashboard). It hardcodes the Railway
+  production URL as its API base, so it works on any network with zero
+  configuration. Distributed for the demo as a signed **Android APK** built via
+  `eas build --platform android --profile preview` (internal distribution —
+  installable directly, no Play Store review needed) and via **Expo Go** for
+  live development.
+
+**Geolocation-based Live Risk Preview** (new in the Final Round, no Initial Round
+analogue): both clients call `navigator.geolocation` (web) / the Expo Location
+API (mobile) on first load. `scripts/build_district_profiles.py` produced
+`models/v1/district_profiles.json` — for each of Sri Lanka's 25 districts, a
+**real-world centroid** (the Initial Round's `latitude`/`longitude` columns are
+synthetic and uncorrelated with `district`, so real district-capital coordinates
+were hardcoded) plus that district's typical rainfall, elevation, drainage,
+land cover, and infrastructure values (the *real* per-district aggregates, which
+*are* meaningfully correlated with `district` in the training data). The client
+fetches this once via `/model/info`, does a haversine nearest-centroid match
+against the user's coordinates, and immediately shows "here's the flood risk for
+*your* area" — without waiting for the user to fill out the form. If location
+permission is denied, both clients fall back to a fixed Galle example with a
+retry button.
 
 ---
 
@@ -301,14 +353,23 @@ documented, deliberate cost of that trade-off.
   built React frontend (`frontend/dist/`) from one process, with a catch-all
   route so client-side routing (`/predict`, `/dashboard`) works on full page
   loads and refreshes.
-- **Cloud deployment**: `render.yaml` defines a Render **Docker web service**
-  with a `/health` check and an optional `ANTHROPIC_API_KEY` environment
-  variable. Render builds the `Dockerfile` directly — no separate build step or
-  artifact registry is needed, since `models/v1/` ships inside the image.
+- **Cloud deployment**: the live demo runs on **Railway** (`floodguard`
+  service, `sfo` region), built directly from the `Dockerfile` via
+  `railway up`, with `/health` as the readiness check and an optional
+  `ANTHROPIC_API_KEY` environment variable. `render.yaml` is kept as a
+  documented alternative — Render builds the same `Dockerfile` with no separate
+  build step or artifact registry, since `models/v1/` ships inside the image.
 - **Web deployment**: the same image serves `/` (landing page), `/predict`
   (prediction form), and `/dashboard` (monitoring dashboard), so judges reach
   the full product through one URL with no extra setup, per the "Deployment
   Link" requirement.
+- **Mobile deployment**: the Expo app (`mobile/`) is built into a standalone,
+  installable **Android APK** via EAS Build (`eas build --platform android
+  --profile preview`, `eas.json` configures `internal` distribution + `apk`
+  build type). The APK already points at the Railway URL, so installing it on
+  any Android device gives judges the full mobile experience with no dev server
+  or network configuration — satisfying the "Mobile app demo" deployment-link
+  option.
 
 ## 4.2 Monitoring Approach
 
@@ -381,3 +442,7 @@ the original model competitive.
   dashboard.
 - Expanding the LLM Risk Advisor to support multiple languages (Sinhala/Tamil)
   for end users in the regions the model covers.
+- Publishing the mobile app to the Play Store / TestFlight (currently
+  distributed as an internal EAS preview APK for the demo), and adding
+  background location + push notifications so users are proactively alerted
+  when their district's risk crosses a threshold.
