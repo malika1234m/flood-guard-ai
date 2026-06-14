@@ -17,3 +17,4 @@ requirements.txt
 *.md
 frontend/node_modules/
 frontend/dist/
+mobile/

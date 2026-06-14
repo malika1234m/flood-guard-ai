@@ -6,7 +6,7 @@ into a deployed product: a FastAPI service that scores a location's flood risk
 (0-1), explains the prediction, generates an AI-written risk report, and exposes
 a monitoring dashboard for everything it serves.
 
-**Live demo:** `<RENDER_URL_HERE>`
+**Live demo:** https://floodguard-production.up.railway.app
 
 ---
 
@@ -92,6 +92,8 @@ flood-guard-ai/
 │   ├── src/pages/           Home, Predict, Dashboard, Impact
 │   ├── src/components/       form fields, charts, risk gauge, live preview, etc.
 │   └── dist/                 production build (generated, served by app/main.py)
+├── mobile/                  React Native (Expo) app — Home, Predict, Dashboard
+│   └── src/                 expo-router screens, API client, theme, UI components
 ├── tests/                   pytest suite (features, inference, API)
 ├── conftest.py              shared fixtures
 ├── Dockerfile / .dockerignore / render.yaml
@@ -240,17 +242,41 @@ pytest -v
 
 ---
 
-## 8. Deploying (Render)
+## 8. Deploying
+
+### Railway (current deployment)
+
+The live demo above runs on [Railway](https://railway.app), built directly from
+the `Dockerfile`:
+
+```bash
+railway login
+railway init --name floodguard     # one-time: create + link the project
+railway up --service floodguard    # build and deploy
+railway domain --service floodguard  # generate a public *.up.railway.app URL
+```
+
+(Optional) enable the LLM-generated risk reports:
+
+```bash
+railway variables set ANTHROPIC_API_KEY=sk-... --service floodguard
+```
+
+Railway auto-detects the `Dockerfile`, injects `$PORT`, and exposes the service
+on `/health`, `/`, `/dashboard`, `/predict`, etc.
+
+### Render (alternative)
 
 1. Push this repo to GitHub.
 2. In Render: **New → Blueprint** → connect the repo (`render.yaml` is auto-detected),
    or **New → Web Service** with environment **Docker**.
 3. (Optional) set `ANTHROPIC_API_KEY` in the service's environment variables to
    enable the LLM-generated risk reports.
-4. Render builds the `Dockerfile` and exposes the service on `/health`,
-   `/`, `/dashboard`, and the `/predict` etc. API endpoints.
+4. Render builds the `Dockerfile` and exposes the service the same way.
 
-Locally, the same image can be built and run with:
+### Local
+
+The same image can be built and run with:
 
 ```bash
 docker build -t floodguard-ai .
@@ -276,6 +302,25 @@ Full request/response schemas: `/docs` (Swagger UI) when the app is running.
 
 ---
 
-## 10. Team
+## 10. Mobile app (Expo / React Native)
+
+`mobile/` is a React Native app (Expo SDK 56 + expo-router) that mirrors the web
+frontend — **Home**, **Predict** (full risk-assessment form + AI report, gauge,
+top factors, feedback), and **Dashboard** (live monitoring stats) — built for
+iOS and Android. It talks directly to the same live backend
+(`https://floodguard-production.up.railway.app`), so it works out of the box
+with no configuration.
+
+```bash
+cd mobile
+npm install
+npx expo start        # scan the QR code with Expo Go (iOS/Android)
+# or
+npx expo start --web  # run in the browser
+```
+
+---
+
+## 11. Team
 
 - _Add team member names / roles here._

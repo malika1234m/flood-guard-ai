@@ -32,3 +32,10 @@ mlruns/*/meta.yaml.bak
 # Claude Code agent skills (auto-installed, not project source)
 .agents/
 skills-lock.json
+.claude/
+
+# Expo (mobile)
+mobile/node_modules/
+mobile/.expo/
+mobile/dist/
+mobile/expo-env.d.ts
