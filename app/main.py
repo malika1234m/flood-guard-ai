@@ -77,6 +77,7 @@ def model_info():
         categorical_options=m["categorical_options"],
         district_defaults=m["district_defaults"],
         advanced_field_global_defaults=m["advanced_field_global_defaults"],
+        district_profiles=predictor.district_profiles,
     )
 
 

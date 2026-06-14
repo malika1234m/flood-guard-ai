@@ -9,10 +9,12 @@ import { AuroraBackground } from '@/components/ui/AuroraBackground';
 import { BrandMark } from '@/components/ui/BrandMark';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { Carousel } from '@/components/ui/Carousel';
 import { GlowDivider } from '@/components/ui/GlowDivider';
 import { GradientText } from '@/components/ui/GradientText';
 import { PulseDot } from '@/components/ui/PulseDot';
 import { SectionHeader } from '@/components/ui/SectionHeader';
+import { StatChip } from '@/components/ui/StatChip';
 import { Colors, Fonts, Glass, Gradients, Radius, Shadows, Spacing } from '@/constants/theme';
 import { getModelInfo, type ModelInfo } from '@/lib/api';
 
@@ -75,6 +77,7 @@ const FEATURES: { icon: keyof typeof Feather.glyphMap; title: string; descriptio
 export default function HomeScreen() {
   const router = useRouter();
   const [info, setInfo] = useState<ModelInfo | null>(null);
+  const [howStep, setHowStep] = useState(0);
 
   useEffect(() => {
     getModelInfo().then(setInfo).catch(() => {});
@@ -137,15 +140,25 @@ export default function HomeScreen() {
             title="From raw inputs to an actionable risk report"
             description="Every assessment runs through the same data pipeline and models described below — built to score one location at a time, in real time."
           />
-          <View style={styles.stepList}>
-            {STEPS.map((step, i) => (
-              <Card key={step.title} variant="glass" contentStyle={styles.stepContent}>
-                <LinearGradient colors={Gradients.brand} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.stepBadge}>
-                  <Text style={styles.stepNumber}>{i + 1}</Text>
-                </LinearGradient>
-                <Text style={styles.stepTitle}>{step.title}</Text>
-                <Text style={styles.stepDescription}>{step.description}</Text>
-              </Card>
+          <Carousel
+            index={howStep}
+            onIndexChange={setHowStep}
+            style={styles.howCarousel}
+            pages={STEPS.map((step, i) => (
+              <View key={step.title} style={styles.stepPage}>
+                <Card variant="glass" style={styles.stepCard} contentStyle={styles.stepContent}>
+                  <LinearGradient colors={Gradients.brand} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.stepBadge}>
+                    <Text style={styles.stepNumber}>{i + 1}</Text>
+                  </LinearGradient>
+                  <Text style={styles.stepTitle}>{step.title}</Text>
+                  <Text style={styles.stepDescription}>{step.description}</Text>
+                </Card>
+              </View>
+            ))}
+          />
+          <View style={styles.dotsRow}>
+            {STEPS.map((_, i) => (
+              <View key={i} style={[styles.dot, i === howStep && styles.dotActive]} />
             ))}
           </View>
         </View>
@@ -157,8 +170,17 @@ export default function HomeScreen() {
             title="An MLOps system, not just a model"
             description="Data, training, serving, and monitoring — packaged into a single deployable service."
           />
+          <Card variant="glass" style={styles.featureHighlight} contentStyle={styles.featureHighlightContent}>
+            <View style={styles.featureIconBoxLarge}>
+              <Feather name={FEATURES[0].icon} size={26} color={Colors.brand} />
+            </View>
+            <View style={styles.featureHighlightText}>
+              <Text style={styles.featureTitle}>{FEATURES[0].title}</Text>
+              <Text style={styles.featureDescription}>{FEATURES[0].description}</Text>
+            </View>
+          </Card>
           <View style={styles.featureGrid}>
-            {FEATURES.map((f) => (
+            {FEATURES.slice(1).map((f) => (
               <Card key={f.title} variant="glass" style={styles.featureCard} contentStyle={styles.featureContent}>
                 <View style={styles.featureIconBox}>
                   <Feather name={f.icon} size={20} color={Colors.brand} />
@@ -177,12 +199,12 @@ export default function HomeScreen() {
             title="Trained on real Sri Lankan flood data"
             description="Live numbers from the model currently powering every assessment."
           />
-          <Card variant="glass" contentStyle={styles.statGrid}>
-            <StatPill value={info?.version ?? '–'} label="Model version" />
-            <StatPill value={info?.categorical_options.district?.length ?? '–'} label="Districts covered" />
-            <StatPill value={info ? info.n_rows.toLocaleString() : '–'} label="Records analyzed" />
-            <StatPill value={info?.n_folds ?? '–'} label="Validation rounds" />
-          </Card>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.statRow}>
+            <StatChip icon="cpu" value={info?.version ?? '–'} label="Model version" />
+            <StatChip icon="map-pin" value={info?.categorical_options.district?.length ?? '–'} label="Districts covered" />
+            <StatChip icon="database" value={info ? info.n_rows.toLocaleString() : '–'} label="Records analyzed" />
+            <StatChip icon="check-circle" value={info?.n_folds ?? '–'} label="Validation rounds" />
+          </ScrollView>
         </View>
 
         <GlowDivider style={styles.divider} />
@@ -198,15 +220,6 @@ export default function HomeScreen() {
         </Card>
       </ScrollView>
     </SafeAreaView>
-  );
-}
-
-function StatPill({ value, label }: { value: string | number; label: string }) {
-  return (
-    <View style={styles.statPill}>
-      <GradientText style={styles.statValue}>{String(value)}</GradientText>
-      <Text style={styles.statLabel}>{label}</Text>
-    </View>
   );
 }
 
@@ -325,11 +338,35 @@ const styles = StyleSheet.create({
   },
 
   // How it works
-  stepList: {
-    gap: Spacing.three,
+  howCarousel: {
+    height: 230,
+  },
+  stepPage: {
+    flex: 1,
+    paddingHorizontal: Spacing.one,
+  },
+  stepCard: {
+    flex: 1,
   },
   stepContent: {
     gap: Spacing.two,
+    justifyContent: 'center',
+  },
+  dotsRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: Spacing.one,
+  },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: Radius.full,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+  },
+  dotActive: {
+    width: 22,
+    backgroundColor: Colors.brand,
   },
   stepBadge: {
     width: 34,
@@ -355,6 +392,26 @@ const styles = StyleSheet.create({
   },
 
   // Features
+  featureHighlight: {
+    overflow: 'hidden',
+  },
+  featureHighlightContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+  },
+  featureIconBoxLarge: {
+    width: 56,
+    height: 56,
+    borderRadius: Radius.lg,
+    backgroundColor: 'rgba(56,189,248,0.14)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  featureHighlightText: {
+    flex: 1,
+    gap: Spacing.one,
+  },
   featureGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -387,27 +444,10 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
 
-  // Stat grid
-  statGrid: {
+  // Stat strip
+  statRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  statPill: {
-    width: '50%',
-    alignItems: 'center',
-    paddingVertical: Spacing.two + 2,
-    gap: Spacing.one,
-  },
-  statValue: {
-    fontSize: 24,
-    fontFamily: Fonts.extrabold,
-  },
-  statLabel: {
-    color: Colors.textMuted,
-    fontSize: 10.5,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    textAlign: 'center',
+    gap: Spacing.three,
   },
 
   divider: {

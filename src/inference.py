@@ -45,6 +45,8 @@ class FloodRiskPredictor:
         self.meta_model = joblib.load(model_dir / "meta_model.joblib")
         with open(model_dir / "metadata.json") as f:
             self.metadata = json.load(f)
+        with open(model_dir / "district_profiles.json") as f:
+            self.district_profiles = json.load(f)
         self.calibration_shift = float(self.metadata["calibration_shift"])
         self.top_features = self.metadata["top_features"]
 

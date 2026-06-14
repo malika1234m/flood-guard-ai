@@ -1,15 +1,17 @@
 import { Feather } from '@expo/vector-icons';
-import { useEffect, useRef, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AuroraBackground } from '@/components/ui/AuroraBackground';
 import { BrandMark } from '@/components/ui/BrandMark';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
-import { PulseDot } from '@/components/ui/PulseDot';
+import { Carousel } from '@/components/ui/Carousel';
 import { NumberField, SelectField, TextField } from '@/components/form/FormField';
 import { Section } from '@/components/form/Section';
+import { SummaryRow } from '@/components/form/SummaryRow';
+import { PulseDot } from '@/components/ui/PulseDot';
 import { RiskResult } from '@/components/RiskResult';
 import { Colors, Fonts, Glass, Radius, Shadows, Spacing } from '@/constants/theme';
 import { getModelInfo, predict, type ModelInfo, type PredictRequest, type PredictResponse } from '@/lib/api';
@@ -120,6 +122,15 @@ const ADVANCED_INDEX_FIELDS = [
   },
 ] as const satisfies readonly { id: keyof FormState; label: string; helper: string; icon: keyof typeof Feather.glyphMap }[];
 
+const STEPS = [
+  { title: 'Location', icon: 'map-pin' },
+  { title: 'Climate & Terrain', icon: 'cloud-rain' },
+  { title: 'Community & Infrastructure', icon: 'users' },
+  { title: 'Fine-tune', icon: 'sliders' },
+  { title: 'Review & Submit', icon: 'check-square' },
+  { title: 'Result', icon: 'activity' },
+] as const satisfies readonly { title: string; icon: keyof typeof Feather.glyphMap }[];
+
 function optionalNumber(value: string): number | null {
   return value.trim() === '' ? null : parseFloat(value);
 }
@@ -166,8 +177,7 @@ export default function PredictScreen() {
   const [form, setForm] = useState<FormState>(DEFAULT_FORM);
   const [result, setResult] = useState<PredictResponse | null>(null);
   const [loading, setLoading] = useState(false);
-  const [showAdvanced, setShowAdvanced] = useState(false);
-  const scrollRef = useRef<ScrollView>(null);
+  const [step, setStep] = useState(0);
 
   useEffect(() => {
     getModelInfo()
@@ -201,7 +211,7 @@ export default function PredictScreen() {
     try {
       const data = await predict(buildPayload(form));
       setResult(data);
-      scrollRef.current?.scrollTo({ y: 0, animated: true });
+      setStep(5);
     } catch (err) {
       Alert.alert('Prediction failed', err instanceof Error ? err.message : 'Please try again.');
     } finally {
@@ -209,17 +219,262 @@ export default function PredictScreen() {
     }
   }
 
+  function startOver() {
+    setResult(null);
+    setForm((prev) => {
+      const next = { ...DEFAULT_FORM };
+      for (const field of CATEGORICAL_FIELDS) {
+        next[field] = info?.categorical_options[field]?.[0] ?? prev[field];
+      }
+      return next;
+    });
+    setStep(0);
+  }
+
+  const pages = [
+    <ScrollView key="location" style={styles.pageScroll} contentContainerStyle={styles.page} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+      <Card variant="glass" contentStyle={styles.formContent}>
+        <Section title="Location" description="Pinpoint the location, or use your best estimate for the area." icon="map-pin">
+          <SelectField label="District" value={form.district} onChange={set('district')} options={options?.district ?? []} icon="map-pin" />
+          <SelectField label="Urban or rural" value={form.urban_rural} onChange={set('urban_rural')} options={options?.urban_rural ?? []} icon="home" />
+          <NumberField
+            label="Latitude"
+            value={form.latitude}
+            onChangeText={set('latitude')}
+            helperText="Right-click the location on Google Maps and copy the first number shown."
+            icon="compass"
+          />
+          <NumberField
+            label="Longitude"
+            value={form.longitude}
+            onChangeText={set('longitude')}
+            helperText="The second number from the same map coordinates."
+            icon="compass"
+          />
+          <SelectField
+            label="Land cover"
+            value={form.landcover}
+            onChange={set('landcover')}
+            options={options?.landcover ?? []}
+            helperText="What mostly covers the ground here."
+            icon="image"
+          />
+          <SelectField
+            label="Soil type"
+            value={form.soil_type}
+            onChange={set('soil_type')}
+            options={options?.soil_type ?? []}
+            helperText="The dominant soil type in the area, if known."
+            icon="layers"
+          />
+        </Section>
+      </Card>
+    </ScrollView>,
+
+    <ScrollView key="climate" style={styles.pageScroll} contentContainerStyle={styles.page} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+      <Card variant="glass" contentStyle={styles.formContent}>
+        <Section title="Climate & Terrain" description="Rainfall, ground conditions, and vegetation around the location." icon="cloud-rain">
+          <NumberField
+            label="Elevation (m)"
+            value={form.elevation_m}
+            onChangeText={set('elevation_m')}
+            helperText="Height above sea level. Lower-lying areas are generally at higher risk."
+            icon="trending-up"
+          />
+          <NumberField label="Distance to nearest river (m)" value={form.distance_to_river_m} onChangeText={set('distance_to_river_m')} icon="map" />
+          <NumberField
+            label="Rainfall, last 7 days (mm)"
+            value={form.rainfall_7d_mm}
+            onChangeText={set('rainfall_7d_mm')}
+            helperText="Total rainfall recorded in this area over the past week."
+            icon="cloud-rain"
+          />
+          <NumberField label="Typical monthly rainfall (mm)" value={form.monthly_rainfall_mm} onChangeText={set('monthly_rainfall_mm')} icon="cloud" />
+          <NumberField
+            label="Drainage quality (0-2)"
+            value={form.drainage_index}
+            onChangeText={set('drainage_index')}
+            helperText="How well rainwater drains away. 0 = very poor, water pools easily. 2 = excellent."
+            icon="sliders"
+          />
+          <NumberField
+            label="Past flooding events"
+            value={form.historical_flood_count}
+            onChangeText={set('historical_flood_count')}
+            helperText="How many times this area has flooded in recorded history."
+            icon="alert-triangle"
+          />
+          <NumberField
+            label="Vegetation cover (NDVI, -1 to 1)"
+            value={form.ndvi}
+            onChangeText={set('ndvi')}
+            helperText="How green the area is. -1 = bare ground or water, 1 = dense vegetation. Most land: 0.2 to 0.6."
+            icon="feather"
+          />
+          <NumberField
+            label="Surface water index (NDWI, -1 to 1)"
+            value={form.ndwi}
+            onChangeText={set('ndwi')}
+            helperText="How much open water is visible. -1 = dry land, 1 = mostly water. Most land: -0.2 to 0.2."
+            icon="droplet"
+          />
+          <SelectField
+            label="Water body directly nearby?"
+            value={form.water_presence_flag}
+            onChange={set('water_presence_flag')}
+            options={options?.water_presence_flag ?? []}
+            helperText="Is there a river, lake, or reservoir right next to this location?"
+            icon="anchor"
+          />
+        </Section>
+      </Card>
+    </ScrollView>,
+
+    <ScrollView key="community" style={styles.pageScroll} contentContainerStyle={styles.page} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+      <Card variant="glass" contentStyle={styles.formContent}>
+        <Section title="Community & Infrastructure" description="The people, buildings, and services around this location." icon="users">
+          <NumberField
+            label="Population density (people/km²)"
+            value={form.population_density_per_km2}
+            onChangeText={set('population_density_per_km2')}
+            helperText="Roughly how many people live in each square kilometer of this area."
+            icon="users"
+          />
+          <NumberField
+            label="Built-up land (%)"
+            value={form.built_up_percent}
+            onChangeText={set('built_up_percent')}
+            helperText="Share of the area covered by buildings and roads, rather than open land."
+            icon="grid"
+          />
+          <NumberField
+            label="Infrastructure quality (0-100)"
+            value={form.infrastructure_score}
+            onChangeText={set('infrastructure_score')}
+            helperText="Overall quality of roads, utilities, and buildings. 0 = very poor, 100 = excellent."
+            icon="tool"
+          />
+          <SelectField label="Water supply" value={form.water_supply} onChange={set('water_supply')} options={options?.water_supply ?? []} icon="droplet" />
+          <SelectField label="Electricity access" value={form.electricity} onChange={set('electricity')} options={options?.electricity ?? []} icon="zap" />
+          <SelectField label="Road quality" value={form.road_quality} onChange={set('road_quality')} options={options?.road_quality ?? []} icon="navigation-2" />
+          <NumberField label="Distance to nearest hospital (km)" value={form.nearest_hospital_km} onChangeText={set('nearest_hospital_km')} icon="plus-circle" />
+          <NumberField label="Distance to nearest evacuation center (km)" value={form.nearest_evac_km} onChangeText={set('nearest_evac_km')} icon="shield" />
+        </Section>
+      </Card>
+    </ScrollView>,
+
+    <ScrollView key="finetune" style={styles.pageScroll} contentContainerStyle={styles.page} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+      <Card variant="glass" contentStyle={styles.formContent}>
+        <Text style={styles.stepIntro}>
+          These settings are optional. We&apos;ve filled in typical values for the selected district — only change
+          them if you have more accurate local data or know about current conditions.
+        </Text>
+        <Section title="Right now" description="If flooding is already happening at this location, add the details here." icon="alert-circle">
+          <SelectField
+            label="Is flooding happening right now?"
+            value={form.flood_occurrence_current_event}
+            onChange={set('flood_occurrence_current_event')}
+            options={['No', 'Yes']}
+            icon="alert-octagon"
+          />
+          {form.flood_occurrence_current_event === 'Yes' && (
+            <NumberField
+              label="Approximate flooded area (sq. m)"
+              value={form.inundation_area_sqm}
+              onChangeText={set('inundation_area_sqm')}
+              helperText="Roughly how much land is currently underwater."
+              icon="maximize"
+            />
+          )}
+          <SelectField
+            label="Is this location currently livable?"
+            value={form.is_good_to_live}
+            onChange={set('is_good_to_live')}
+            options={['Yes', 'No']}
+            helperText="Leave as 'Yes' unless there's a serious, ongoing issue such as prolonged flooding."
+            icon="home"
+          />
+          {form.is_good_to_live === 'No' && (
+            <TextField
+              label="Reason (optional)"
+              value={form.reason_not_good_to_live}
+              onChangeText={set('reason_not_good_to_live')}
+              placeholder="e.g. frequent flooding, poor road access"
+              icon="message-square"
+            />
+          )}
+        </Section>
+
+        <Section
+          title="Local fine-tuning"
+          description="These advanced figures are filled in automatically using typical values for the selected district. Only change them if you have more accurate local data."
+          icon="sliders"
+        >
+          {ADVANCED_INDEX_FIELDS.map(({ id, label, helper, icon }) => (
+            <NumberField
+              key={id}
+              label={label}
+              value={form[id]}
+              onChangeText={set(id)}
+              placeholder={placeholderFor(id)}
+              helperText={helper}
+              icon={icon}
+            />
+          ))}
+        </Section>
+      </Card>
+    </ScrollView>,
+
+    <ScrollView key="review" style={styles.pageScroll} contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
+      <Card variant="glass" contentStyle={styles.formContent}>
+        <View style={styles.cardHeader}>
+          <View style={styles.cardIconBox}>
+            <Feather name="check-square" size={15} color={Colors.brand} />
+          </View>
+          <Text style={styles.cardTitle}>Review your answers</Text>
+        </View>
+        <Text style={styles.cardSubtitle}>
+          Double-check the key details below, then tap Check Flood Risk to run the assessment.
+        </Text>
+        <SummaryRow label="District" value={form.district || '—'} onEdit={() => setStep(0)} />
+        <SummaryRow label="Urban or rural" value={form.urban_rural || '—'} onEdit={() => setStep(0)} />
+        <SummaryRow label="Coordinates" value={`${form.latitude}, ${form.longitude}`} onEdit={() => setStep(0)} />
+        <SummaryRow label="Rainfall, last 7 days" value={`${form.rainfall_7d_mm} mm`} onEdit={() => setStep(1)} />
+        <SummaryRow label="Elevation" value={`${form.elevation_m} m`} onEdit={() => setStep(1)} />
+        <SummaryRow label="Population density" value={`${form.population_density_per_km2} /km²`} onEdit={() => setStep(2)} />
+      </Card>
+    </ScrollView>,
+
+    <ScrollView key="result" style={styles.pageScroll} contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
+      <Card variant="glass" contentStyle={styles.resultContent}>
+        {result ? (
+          <>
+            <RiskResult result={result} />
+            <Button title="Start a new assessment" variant="secondary" icon="refresh-cw" onPress={startOver} />
+          </>
+        ) : (
+          <View style={styles.placeholder}>
+            <View style={styles.placeholderIconBox}>
+              <Feather name="droplet" size={28} color={Colors.brand} />
+            </View>
+            <Text style={styles.placeholderText}>
+              Complete the previous steps and tap <Text style={styles.bold}>Check Flood Risk</Text> to see the risk
+              score, category, and a plain-language report with recommended next steps.
+            </Text>
+          </View>
+        )}
+      </Card>
+    </ScrollView>,
+  ];
+
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
-      <ScrollView ref={scrollRef} style={styles.scroll} contentContainerStyle={styles.content}>
+      <View style={styles.root}>
         <View style={styles.header}>
           <AuroraBackground variant="page" />
           <BrandMark />
           <Text style={styles.headerTitle}>Check Your Flood Risk</Text>
-          <Text style={styles.headerSubtitle}>
-            Answer a few questions about a location anywhere in Sri Lanka to get an instant risk score, a
-            plain-language explanation, and recommended next steps.
-          </Text>
+          <Text style={styles.headerSubtitle}>A quick, step-by-step assessment for any location in Sri Lanka.</Text>
           <View style={styles.headerBadges}>
             <View style={styles.headerBadge}>
               <PulseDot size={6} />
@@ -234,225 +489,36 @@ export default function PredictScreen() {
           </View>
         </View>
 
-        <Card variant="glass" contentStyle={styles.resultContent}>
-          <View style={styles.cardHeader}>
-            <View style={styles.cardIconBox}>
-              <Feather name="activity" size={15} color={Colors.brand} />
-            </View>
-            <Text style={styles.cardTitle}>Result</Text>
+        <View style={styles.wizardHeader}>
+          <View style={styles.stepProgress}>
+            {STEPS.map((_, i) => (
+              <View
+                key={i}
+                style={[styles.stepSegment, i < step && styles.stepSegmentDone, i === step && styles.stepSegmentActive]}
+              />
+            ))}
           </View>
-          {result ? (
-            <RiskResult result={result} />
-          ) : (
-            <View style={styles.placeholder}>
-              <View style={styles.placeholderIconBox}>
-                <Feather name="droplet" size={28} color={Colors.brand} />
-              </View>
-              <Text style={styles.placeholderText}>
-                Fill in the form below and tap <Text style={styles.bold}>Check Flood Risk</Text> to see the risk
-                score, category, and a plain-language report with recommended next steps.
-              </Text>
-            </View>
-          )}
-        </Card>
-
-        <Card variant="glass" contentStyle={styles.formContent}>
-          <View style={styles.cardHeader}>
-            <View style={styles.cardIconBox}>
-              <Feather name="edit-3" size={15} color={Colors.brand} />
-            </View>
-            <Text style={styles.cardTitle}>About the Location</Text>
+          <View style={styles.stepLabelRow}>
+            <Feather name={STEPS[step].icon} size={14} color={Colors.brand} />
+            <Text style={styles.stepLabelText}>
+              Step {step + 1} of {STEPS.length} · {STEPS[step].title}
+            </Text>
           </View>
-          <Text style={styles.cardSubtitle}>
-            The form starts with typical values for a calm day — change anything you know about the location and
-            leave the rest as-is.
-          </Text>
+        </View>
 
-          <Section title="Location" description="Pinpoint the location, or use your best estimate for the area." icon="map-pin">
-            <SelectField label="District" value={form.district} onChange={set('district')} options={options?.district ?? []} icon="map-pin" />
-            <SelectField label="Urban or rural" value={form.urban_rural} onChange={set('urban_rural')} options={options?.urban_rural ?? []} icon="home" />
-            <NumberField
-              label="Latitude"
-              value={form.latitude}
-              onChangeText={set('latitude')}
-              helperText="Right-click the location on Google Maps and copy the first number shown."
-              icon="compass"
-            />
-            <NumberField
-              label="Longitude"
-              value={form.longitude}
-              onChangeText={set('longitude')}
-              helperText="The second number from the same map coordinates."
-              icon="compass"
-            />
-            <SelectField
-              label="Land cover"
-              value={form.landcover}
-              onChange={set('landcover')}
-              options={options?.landcover ?? []}
-              helperText="What mostly covers the ground here."
-              icon="image"
-            />
-            <SelectField
-              label="Soil type"
-              value={form.soil_type}
-              onChange={set('soil_type')}
-              options={options?.soil_type ?? []}
-              helperText="The dominant soil type in the area, if known."
-              icon="layers"
-            />
-          </Section>
+        <Carousel index={step} onIndexChange={setStep} pages={pages} style={styles.carousel} />
 
-          <Section title="Climate & Terrain" description="Rainfall, ground conditions, and vegetation around the location." icon="cloud-rain">
-            <NumberField
-              label="Elevation (m)"
-              value={form.elevation_m}
-              onChangeText={set('elevation_m')}
-              helperText="Height above sea level. Lower-lying areas are generally at higher risk."
-              icon="trending-up"
-            />
-            <NumberField label="Distance to nearest river (m)" value={form.distance_to_river_m} onChangeText={set('distance_to_river_m')} icon="map" />
-            <NumberField
-              label="Rainfall, last 7 days (mm)"
-              value={form.rainfall_7d_mm}
-              onChangeText={set('rainfall_7d_mm')}
-              helperText="Total rainfall recorded in this area over the past week."
-              icon="cloud-rain"
-            />
-            <NumberField label="Typical monthly rainfall (mm)" value={form.monthly_rainfall_mm} onChangeText={set('monthly_rainfall_mm')} icon="cloud" />
-            <NumberField
-              label="Drainage quality (0-2)"
-              value={form.drainage_index}
-              onChangeText={set('drainage_index')}
-              helperText="How well rainwater drains away. 0 = very poor, water pools easily. 2 = excellent."
-              icon="sliders"
-            />
-            <NumberField
-              label="Past flooding events"
-              value={form.historical_flood_count}
-              onChangeText={set('historical_flood_count')}
-              helperText="How many times this area has flooded in recorded history."
-              icon="alert-triangle"
-            />
-            <NumberField
-              label="Vegetation cover (NDVI, -1 to 1)"
-              value={form.ndvi}
-              onChangeText={set('ndvi')}
-              helperText="How green the area is. -1 = bare ground or water, 1 = dense vegetation. Most land: 0.2 to 0.6."
-              icon="feather"
-            />
-            <NumberField
-              label="Surface water index (NDWI, -1 to 1)"
-              value={form.ndwi}
-              onChangeText={set('ndwi')}
-              helperText="How much open water is visible. -1 = dry land, 1 = mostly water. Most land: -0.2 to 0.2."
-              icon="droplet"
-            />
-            <SelectField
-              label="Water body directly nearby?"
-              value={form.water_presence_flag}
-              onChange={set('water_presence_flag')}
-              options={options?.water_presence_flag ?? []}
-              helperText="Is there a river, lake, or reservoir right next to this location?"
-              icon="anchor"
-            />
-          </Section>
-
-          <Section title="Community & Infrastructure" description="The people, buildings, and services around this location." icon="users">
-            <NumberField
-              label="Population density (people/km²)"
-              value={form.population_density_per_km2}
-              onChangeText={set('population_density_per_km2')}
-              helperText="Roughly how many people live in each square kilometer of this area."
-              icon="users"
-            />
-            <NumberField
-              label="Built-up land (%)"
-              value={form.built_up_percent}
-              onChangeText={set('built_up_percent')}
-              helperText="Share of the area covered by buildings and roads, rather than open land."
-              icon="grid"
-            />
-            <NumberField
-              label="Infrastructure quality (0-100)"
-              value={form.infrastructure_score}
-              onChangeText={set('infrastructure_score')}
-              helperText="Overall quality of roads, utilities, and buildings. 0 = very poor, 100 = excellent."
-              icon="tool"
-            />
-            <SelectField label="Water supply" value={form.water_supply} onChange={set('water_supply')} options={options?.water_supply ?? []} icon="droplet" />
-            <SelectField label="Electricity access" value={form.electricity} onChange={set('electricity')} options={options?.electricity ?? []} icon="zap" />
-            <SelectField label="Road quality" value={form.road_quality} onChange={set('road_quality')} options={options?.road_quality ?? []} icon="navigation-2" />
-            <NumberField label="Distance to nearest hospital (km)" value={form.nearest_hospital_km} onChangeText={set('nearest_hospital_km')} icon="plus-circle" />
-            <NumberField label="Distance to nearest evacuation center (km)" value={form.nearest_evac_km} onChangeText={set('nearest_evac_km')} icon="shield" />
-          </Section>
-
-          <Pressable onPress={() => setShowAdvanced((v) => !v)} style={styles.advancedToggle}>
-            <Feather name={showAdvanced ? 'chevron-down' : 'chevron-right'} size={18} color={Colors.brand} />
-            <Text style={styles.advancedToggleText}>More options: current conditions & fine-tuning (optional)</Text>
-          </Pressable>
-
-          {showAdvanced && (
-            <>
-              <Section title="Right now" description="If flooding is already happening at this location, add the details here." icon="alert-circle">
-                <SelectField
-                  label="Is flooding happening right now?"
-                  value={form.flood_occurrence_current_event}
-                  onChange={set('flood_occurrence_current_event')}
-                  options={['No', 'Yes']}
-                  icon="alert-octagon"
-                />
-                {form.flood_occurrence_current_event === 'Yes' && (
-                  <NumberField
-                    label="Approximate flooded area (sq. m)"
-                    value={form.inundation_area_sqm}
-                    onChangeText={set('inundation_area_sqm')}
-                    helperText="Roughly how much land is currently underwater."
-                    icon="maximize"
-                  />
-                )}
-                <SelectField
-                  label="Is this location currently livable?"
-                  value={form.is_good_to_live}
-                  onChange={set('is_good_to_live')}
-                  options={['Yes', 'No']}
-                  helperText="Leave as 'Yes' unless there's a serious, ongoing issue such as prolonged flooding."
-                  icon="home"
-                />
-                {form.is_good_to_live === 'No' && (
-                  <TextField
-                    label="Reason (optional)"
-                    value={form.reason_not_good_to_live}
-                    onChangeText={set('reason_not_good_to_live')}
-                    placeholder="e.g. frequent flooding, poor road access"
-                    icon="message-square"
-                  />
-                )}
-              </Section>
-
-              <Section
-                title="Local fine-tuning"
-                description="These advanced figures are filled in automatically using typical values for the selected district. Only change them if you have more accurate local data."
-                icon="sliders"
-              >
-                {ADVANCED_INDEX_FIELDS.map(({ id, label, helper, icon }) => (
-                  <NumberField
-                    key={id}
-                    label={label}
-                    value={form[id]}
-                    onChangeText={set(id)}
-                    placeholder={placeholderFor(id)}
-                    helperText={helper}
-                    icon={icon}
-                  />
-                ))}
-              </Section>
-            </>
-          )}
-
-          <Button title={loading ? 'Checking…' : 'Check Flood Risk'} onPress={handleSubmit} loading={loading} />
-        </Card>
-      </ScrollView>
+        {step !== 5 && (
+          <View style={styles.wizardFooter}>
+            <Button title="Back" variant="secondary" fullWidth={false} disabled={step === 0} onPress={() => setStep((s) => Math.max(0, s - 1))} />
+            {step === 4 ? (
+              <Button title={loading ? 'Checking…' : 'Check Flood Risk'} fullWidth={false} icon="arrow-right" loading={loading} onPress={handleSubmit} />
+            ) : (
+              <Button title="Next" fullWidth={false} icon="arrow-right" onPress={() => setStep((s) => Math.min(STEPS.length - 1, s + 1))} />
+            )}
+          </View>
+        )}
+      </View>
     </SafeAreaView>
   );
 }
@@ -462,13 +528,10 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.bg,
   },
-  scroll: {
+  root: {
     flex: 1,
-  },
-  content: {
     padding: Spacing.three,
     gap: Spacing.three,
-    paddingBottom: Spacing.six,
   },
 
   // Header
@@ -479,7 +542,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Glass.border,
     paddingHorizontal: Spacing.three + 2,
-    paddingVertical: Spacing.four,
+    paddingVertical: Spacing.three + 2,
     gap: Spacing.two,
     ...Shadows.card,
   },
@@ -515,6 +578,61 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     fontFamily: Fonts.semibold,
     fontSize: 11.5,
+  },
+
+  // Wizard progress
+  wizardHeader: {
+    gap: Spacing.two,
+  },
+  stepProgress: {
+    flexDirection: 'row',
+    gap: Spacing.one,
+  },
+  stepSegment: {
+    flex: 1,
+    height: 4,
+    borderRadius: Radius.full,
+    backgroundColor: 'rgba(255,255,255,0.10)',
+  },
+  stepSegmentDone: {
+    backgroundColor: 'rgba(56,189,248,0.45)',
+  },
+  stepSegmentActive: {
+    backgroundColor: Colors.brand,
+  },
+  stepLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one + 2,
+  },
+  stepLabelText: {
+    color: Colors.textMuted,
+    fontFamily: Fonts.semibold,
+    fontSize: 12.5,
+  },
+
+  // Wizard pages
+  carousel: {
+    flex: 1,
+  },
+  pageScroll: {
+    flex: 1,
+  },
+  page: {
+    paddingBottom: Spacing.three,
+  },
+  stepIntro: {
+    color: Colors.textMuted,
+    fontSize: 13,
+    lineHeight: 18,
+    marginBottom: Spacing.two,
+  },
+
+  // Wizard footer
+  wizardFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: Spacing.three,
   },
 
   // Card headers
@@ -572,23 +690,5 @@ const styles = StyleSheet.create({
   bold: {
     color: Colors.text,
     fontFamily: Fonts.bold,
-  },
-  advancedToggle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.one + 2,
-    borderWidth: 1,
-    borderColor: Glass.border,
-    backgroundColor: 'rgba(255,255,255,0.02)',
-    borderRadius: Radius.md,
-    paddingVertical: Spacing.two + 2,
-    paddingHorizontal: Spacing.three,
-    marginBottom: Spacing.one,
-  },
-  advancedToggleText: {
-    flex: 1,
-    color: Colors.brand,
-    fontFamily: Fonts.bold,
-    fontSize: 13.5,
   },
 });

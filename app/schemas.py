@@ -86,6 +86,35 @@ class FeedbackRequest(BaseModel):
     comment: Optional[str] = None
 
 
+class DistrictProfile(BaseModel):
+    latitude: float
+    longitude: float
+    elevation_m: float
+    distance_to_river_m: float
+    population_density_per_km2: float
+    built_up_percent: float
+    rainfall_7d_mm: float
+    monthly_rainfall_mm: float
+    drainage_index: float
+    ndvi: float
+    ndwi: float
+    historical_flood_count: float
+    infrastructure_score: float
+    nearest_hospital_km: float
+    nearest_evac_km: float
+    seasonal_index: float
+    terrain_roughness_index: float
+    socioeconomic_status_index: float
+    extreme_weather_index: float
+    landcover: str
+    soil_type: str
+    water_supply: str
+    electricity: str
+    road_quality: str
+    urban_rural: str
+    water_presence_flag: str
+
+
 class ModelInfo(BaseModel):
     version: str
     trained_at: str
@@ -97,6 +126,7 @@ class ModelInfo(BaseModel):
     categorical_options: dict[str, list[str]]
     district_defaults: dict[str, dict[str, float]]
     advanced_field_global_defaults: dict[str, float]
+    district_profiles: dict[str, DistrictProfile]
 
 
 class HealthResponse(BaseModel):

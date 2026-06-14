@@ -5,6 +5,7 @@ import {
   AlertTriangle,
   CloudRain,
   Gauge,
+  LocateFixed,
   MapPin,
   RefreshCw,
   Satellite,
@@ -16,8 +17,9 @@ import { RiskGauge } from "@/components/RiskGauge";
 import { RISK_BADGE_CLASSES } from "@/lib/riskBadge";
 import { cn } from "@/lib/utils";
 import { BASE_MODEL_NAMES, getModelInfo, predict, type ModelInfo, type PredictRequest, type PredictResponse } from "@/lib/api";
+import { getCurrentPosition, nearestDistrict, type GeoPosition } from "@/lib/geo";
 
-const LOCATION = { name: "Galle District", latitude: 6.0535, longitude: 80.221 };
+const FALLBACK_LOCATION = { name: "Galle District", latitude: 6.0535, longitude: 80.221 };
 
 const FALLBACK_RESULT: PredictResponse = {
   flood_risk_score: 0.78,
@@ -43,48 +45,124 @@ const FALLBACK_RESULT: PredictResponse = {
   latency_ms: 0,
 };
 
-function buildSnapshotPayload(info: ModelInfo): PredictRequest {
+interface SnapshotLocation {
+  payload: PredictRequest;
+  districtName: string;
+  latitude: number;
+  longitude: number;
+  matchDistanceKm: number | null;
+}
+
+/** Galle District example payload, used before geolocation resolves and as a fallback
+ * when location permission is denied or no district profile is available. */
+function buildExamplePayload(info: ModelInfo): SnapshotLocation {
   const pick = (field: string, fallback: string) => info.categorical_options[field]?.[0] ?? fallback;
   const districtOptions = info.categorical_options.district ?? [];
   const district = districtOptions.includes("Galle") ? "Galle" : districtOptions[0] ?? "Galle";
 
   return {
-    latitude: LOCATION.latitude,
-    longitude: LOCATION.longitude,
-    elevation_m: 4,
-    distance_to_river_m: 180,
-    population_density_per_km2: 2100,
-    built_up_percent: 48,
-    rainfall_7d_mm: 186,
-    monthly_rainfall_mm: 340,
-    drainage_index: 0.35,
-    ndvi: 0.38,
-    ndwi: 0.22,
-    historical_flood_count: 4,
-    infrastructure_score: 52,
-    nearest_hospital_km: 3.2,
-    nearest_evac_km: 2.4,
-    district,
-    landcover: pick("landcover", "Urban"),
-    soil_type: pick("soil_type", "Silty"),
-    water_supply: pick("water_supply", "Grid"),
-    electricity: pick("electricity", "Grid"),
-    road_quality: pick("road_quality", "Fair"),
-    urban_rural: pick("urban_rural", "Urban"),
-    water_presence_flag: pick("water_presence_flag", "Likely"),
-    flood_occurrence_current_event: "No",
-    inundation_area_sqm: null,
-    is_good_to_live: "Yes",
-    reason_not_good_to_live: null,
-    seasonal_index: null,
-    terrain_roughness_index: null,
-    socioeconomic_status_index: null,
-    extreme_weather_index: null,
-    include_ai_report: true,
+    payload: {
+      latitude: FALLBACK_LOCATION.latitude,
+      longitude: FALLBACK_LOCATION.longitude,
+      elevation_m: 4,
+      distance_to_river_m: 180,
+      population_density_per_km2: 2100,
+      built_up_percent: 48,
+      rainfall_7d_mm: 186,
+      monthly_rainfall_mm: 340,
+      drainage_index: 0.35,
+      ndvi: 0.38,
+      ndwi: 0.22,
+      historical_flood_count: 4,
+      infrastructure_score: 52,
+      nearest_hospital_km: 3.2,
+      nearest_evac_km: 2.4,
+      district,
+      landcover: pick("landcover", "Urban"),
+      soil_type: pick("soil_type", "Silty"),
+      water_supply: pick("water_supply", "Grid"),
+      electricity: pick("electricity", "Grid"),
+      road_quality: pick("road_quality", "Fair"),
+      urban_rural: pick("urban_rural", "Urban"),
+      water_presence_flag: pick("water_presence_flag", "Likely"),
+      flood_occurrence_current_event: "No",
+      inundation_area_sqm: null,
+      is_good_to_live: "Yes",
+      reason_not_good_to_live: null,
+      seasonal_index: null,
+      terrain_roughness_index: null,
+      socioeconomic_status_index: null,
+      extreme_weather_index: null,
+      include_ai_report: true,
+    },
+    districtName: FALLBACK_LOCATION.name,
+    latitude: FALLBACK_LOCATION.latitude,
+    longitude: FALLBACK_LOCATION.longitude,
+    matchDistanceKm: null,
   };
 }
 
-const CONDITIONS = [
+/** Builds a prediction payload for the user's real coordinates, using the nearest
+ * district's typical conditions as a stand-in for fields we can't sense directly. */
+function buildLocationPayload(info: ModelInfo, coords: GeoPosition): SnapshotLocation | null {
+  const match = nearestDistrict(coords.latitude, coords.longitude, info.district_profiles);
+  if (!match) return null;
+
+  const { district, profile, distanceKm } = match;
+  return {
+    payload: {
+      latitude: coords.latitude,
+      longitude: coords.longitude,
+      elevation_m: profile.elevation_m,
+      distance_to_river_m: profile.distance_to_river_m,
+      population_density_per_km2: profile.population_density_per_km2,
+      built_up_percent: profile.built_up_percent,
+      rainfall_7d_mm: profile.rainfall_7d_mm,
+      monthly_rainfall_mm: profile.monthly_rainfall_mm,
+      drainage_index: profile.drainage_index,
+      ndvi: profile.ndvi,
+      ndwi: profile.ndwi,
+      historical_flood_count: profile.historical_flood_count,
+      infrastructure_score: profile.infrastructure_score,
+      nearest_hospital_km: profile.nearest_hospital_km,
+      nearest_evac_km: profile.nearest_evac_km,
+      district,
+      landcover: profile.landcover,
+      soil_type: profile.soil_type,
+      water_supply: profile.water_supply,
+      electricity: profile.electricity,
+      road_quality: profile.road_quality,
+      urban_rural: profile.urban_rural,
+      water_presence_flag: profile.water_presence_flag,
+      flood_occurrence_current_event: "No",
+      inundation_area_sqm: null,
+      is_good_to_live: "Yes",
+      reason_not_good_to_live: null,
+      seasonal_index: profile.seasonal_index,
+      terrain_roughness_index: profile.terrain_roughness_index,
+      socioeconomic_status_index: profile.socioeconomic_status_index,
+      extreme_weather_index: profile.extreme_weather_index,
+      include_ai_report: true,
+    },
+    districtName: district,
+    latitude: coords.latitude,
+    longitude: coords.longitude,
+    matchDistanceKm: distanceKm,
+  };
+}
+
+function buildConditions(payload: PredictRequest) {
+  return [
+    { label: "Rain (7d)", value: `${Math.round(payload.rainfall_7d_mm)} mm` },
+    { label: "Monthly rain", value: `${Math.round(payload.monthly_rainfall_mm)} mm` },
+    { label: "Drainage", value: `${payload.drainage_index.toFixed(2)} / 2` },
+    { label: "Elevation", value: `${Math.round(payload.elevation_m)} m` },
+    { label: "Population density", value: `${Math.round(payload.population_density_per_km2).toLocaleString()}/km²` },
+    { label: "Infrastructure score", value: `${Math.round(payload.infrastructure_score)} / 100` },
+  ];
+}
+
+const INITIAL_CONDITIONS = [
   { label: "Rain (7d)", value: "186 mm" },
   { label: "Monthly rain", value: "340 mm" },
   { label: "Drainage", value: "0.35 / 2" },
@@ -93,28 +171,46 @@ const CONDITIONS = [
   { label: "Infrastructure score", value: "52 / 100" },
 ];
 
+type LocationStatus = "pending" | "granted" | "unavailable";
+
 /** Live preview of the FloodGuard AI risk engine, styled as a flood-intelligence dashboard. */
 export function LiveRiskPreview() {
   const [result, setResult] = useState<PredictResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [time, setTime] = useState(() => new Date());
+  const [coords, setCoords] = useState<GeoPosition | null>(null);
+  const [locationStatus, setLocationStatus] = useState<LocationStatus>("pending");
+  const [snapshotLocation, setSnapshotLocation] = useState<SnapshotLocation | null>(null);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (coordsOverride?: GeoPosition | null) => {
     setLoading(true);
     try {
       const info = await getModelInfo();
-      const data = await predict(buildSnapshotPayload(info));
+      const activeCoords = coordsOverride !== undefined ? coordsOverride : coords;
+      const located = activeCoords ? buildLocationPayload(info, activeCoords) : null;
+      const snapshot = located ?? buildExamplePayload(info);
+      setSnapshotLocation(snapshot);
+      const data = await predict(snapshot.payload);
       setResult(data);
     } catch {
       setResult(FALLBACK_RESULT);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [coords]);
+
+  const requestLocation = useCallback(async () => {
+    setLocationStatus("pending");
+    const pos = await getCurrentPosition();
+    setCoords(pos);
+    setLocationStatus(pos ? "granted" : "unavailable");
+    await refresh(pos);
+  }, [refresh]);
 
   useEffect(() => {
-    refresh();
-  }, [refresh]);
+    requestLocation();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     const id = setInterval(() => setTime(new Date()), 1000);
@@ -123,6 +219,11 @@ export function LiveRiskPreview() {
 
   const data = result ?? FALLBACK_RESULT;
   const recommendations = data.ai_report?.recommendations ?? FALLBACK_RESULT.ai_report!.recommendations;
+  const conditions = snapshotLocation ? buildConditions(snapshotLocation.payload) : INITIAL_CONDITIONS;
+  const usingUserLocation = locationStatus === "granted" && !!snapshotLocation && snapshotLocation.matchDistanceKm !== null;
+  const districtName = snapshotLocation?.districtName ?? FALLBACK_LOCATION.name;
+  const latitude = snapshotLocation?.latitude ?? FALLBACK_LOCATION.latitude;
+  const longitude = snapshotLocation?.longitude ?? FALLBACK_LOCATION.longitude;
 
   return (
     <div className="relative">
@@ -144,7 +245,9 @@ export function LiveRiskPreview() {
               Sri Lanka Flood Intelligence System
             </div>
             <div className="mt-1 text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-              AI-powered flood risk analysis · live preview
+              {usingUserLocation
+                ? "AI-powered flood risk analysis · your location"
+                : "AI-powered flood risk analysis · example location"}
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -154,7 +257,7 @@ export function LiveRiskPreview() {
             <span className="rounded-full border border-border bg-white/5 px-3 py-1 text-xs font-semibold tabular-nums text-muted-foreground backdrop-blur-md">
               {time.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
             </span>
-            <Button variant="brand-outline" size="sm" onClick={refresh} disabled={loading}>
+            <Button variant="brand-outline" size="sm" onClick={() => refresh()} disabled={loading}>
               <RefreshCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} />
               Refresh
             </Button>
@@ -163,24 +266,42 @@ export function LiveRiskPreview() {
 
         {/* Left column: location (top) + conditions/ensemble (bottom) */}
         <div className="relative z-10 mx-5 mb-4 flex flex-col gap-4 sm:mx-6 lg:absolute lg:inset-x-auto lg:top-[84px] lg:bottom-[76px] lg:left-5 lg:mx-0 lg:mb-0 lg:w-[300px] lg:justify-between">
-          <PreviewPanel icon={MapPin} title="Location">
+          <PreviewPanel icon={MapPin} title={usingUserLocation ? "Your location" : "Example location"}>
             <div className="flex items-center gap-4">
               <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-[radial-gradient(circle_at_50%_50%,rgba(56,189,248,0.35),rgba(11,19,32,0.9)_70%)]">
                 <div className="absolute inset-0 [background-image:linear-gradient(rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.08)_1px,transparent_1px)] [background-size:10px_10px]" />
                 <span className="absolute top-1/2 left-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-brand shadow-[0_0_12px_3px_rgba(56,189,248,0.7)]" />
               </div>
               <div>
-                <div className="text-base font-bold">{LOCATION.name}, Sri Lanka</div>
-                <div className="text-sm text-muted-foreground">
-                  {LOCATION.latitude.toFixed(4)}°N, {LOCATION.longitude.toFixed(4)}°E
+                <div className="text-base font-bold">
+                  {usingUserLocation ? `Near ${districtName}, Sri Lanka` : `${districtName}, Sri Lanka`}
                 </div>
+                <div className="text-sm text-muted-foreground">
+                  {latitude.toFixed(4)}°N, {longitude.toFixed(4)}°E
+                </div>
+                {usingUserLocation && snapshotLocation?.matchDistanceKm != null && (
+                  <div className="mt-1 text-xs text-muted-foreground">
+                    Using {districtName} district profile (~{Math.round(snapshotLocation.matchDistanceKm)} km away)
+                  </div>
+                )}
+                {!usingUserLocation && (
+                  <button
+                    type="button"
+                    onClick={requestLocation}
+                    disabled={loading}
+                    className="mt-1.5 inline-flex items-center gap-1.5 rounded-full border border-brand/40 bg-brand/10 px-2.5 py-1 text-xs font-semibold text-brand transition-colors hover:bg-brand/20 disabled:opacity-50"
+                  >
+                    <LocateFixed className="h-3 w-3" aria-hidden="true" />
+                    {locationStatus === "pending" ? "Detecting your location…" : "Show risk for my location"}
+                  </button>
+                )}
               </div>
             </div>
           </PreviewPanel>
 
           <PreviewPanel icon={CloudRain} title="Conditions analyzed">
             <div className="grid grid-cols-2 gap-3">
-              {CONDITIONS.map((c) => (
+              {conditions.map((c) => (
                 <Stat key={c.label} {...c} />
               ))}
             </div>

@@ -9,6 +9,7 @@
     "userInterfaceStyle": "dark",
     "backgroundColor": "#0b1320",
     "android": {
+      "package": "com.floodguardai.mobile",
       "adaptiveIcon": {
         "backgroundColor": "#0b1320",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -41,6 +42,13 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "5d5be6bb-e2f8-4f70-a819-03582f28d99a"
+      }
+    },
+    "owner": "malika_nish"
   }
 }

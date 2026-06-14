@@ -6,15 +6,23 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle } from 'react-native-svg';
 
 import { AuroraBackground } from '@/components/ui/AuroraBackground';
+import { RiskBadge } from '@/components/ui/Badge';
 import { BrandMark } from '@/components/ui/BrandMark';
 import { Card } from '@/components/ui/Card';
-import { GradientText } from '@/components/ui/GradientText';
 import { PulseDot } from '@/components/ui/PulseDot';
-import { RiskBadge } from '@/components/ui/Badge';
+import { SegmentedTabs } from '@/components/ui/SegmentedTabs';
+import { StatChip } from '@/components/ui/StatChip';
 import { Colors, Fonts, Glass, Gradients, RISK_COLORS, Radius, Shadows, Spacing } from '@/constants/theme';
 import { getMonitoringStats, type MonitoringStats } from '@/lib/api';
 
 const REFRESH_INTERVAL_MS = 15000;
+
+const VIEW_OPTIONS: { key: string; label: string; icon: keyof typeof Feather.glyphMap; title: string }[] = [
+  { key: 'score', label: 'Trend', icon: 'bar-chart-2', title: 'Score distribution' },
+  { key: 'categories', label: 'Categories', icon: 'pie-chart', title: 'Risk category breakdown' },
+  { key: 'districts', label: 'Districts', icon: 'map', title: 'Top districts' },
+  { key: 'recent', label: 'Recent', icon: 'list', title: 'Recent predictions' },
+];
 
 const DONUT_SIZE = 150;
 const DONUT_STROKE = 20;
@@ -30,27 +38,6 @@ function formatTime(timestampSeconds: number) {
   const hh = d.getHours().toString().padStart(2, '0');
   const mm = d.getMinutes().toString().padStart(2, '0');
   return `${hh}:${mm}`;
-}
-
-interface StatTileProps {
-  icon: keyof typeof Feather.glyphMap;
-  value: string | number;
-  label: string;
-  wide?: boolean;
-}
-
-function StatTile({ icon, value, label, wide }: StatTileProps) {
-  return (
-    <View style={[styles.statTile, wide && styles.statTileWide]}>
-      <View style={styles.statIconBox}>
-        <Feather name={icon} size={14} color={Colors.brand} />
-      </View>
-      <View style={wide ? styles.statTileWideBody : styles.statTileBody}>
-        <GradientText style={styles.statValue}>{String(value)}</GradientText>
-        <Text style={styles.statLabel}>{label}</Text>
-      </View>
-    </View>
-  );
 }
 
 interface ChartCardProps {
@@ -232,6 +219,7 @@ function RecentPredictions({ stats }: { stats: MonitoringStats | null }) {
 export default function DashboardScreen() {
   const [stats, setStats] = useState<MonitoringStats | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [view, setView] = useState(VIEW_OPTIONS[0].key);
 
   const refresh = useCallback(async () => {
     setRefreshing(true);
@@ -249,6 +237,8 @@ export default function DashboardScreen() {
     const interval = setInterval(refresh, REFRESH_INTERVAL_MS);
     return () => clearInterval(interval);
   }, [refresh]);
+
+  const activeView = VIEW_OPTIONS.find((v) => v.key === view) ?? VIEW_OPTIONS[0];
 
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
@@ -280,28 +270,21 @@ export default function DashboardScreen() {
           </View>
         </View>
 
-        <Card variant="glass" contentStyle={styles.statGrid}>
-          <StatTile icon="database" value={stats?.total_predictions ?? '--'} label="Predictions" />
-          <StatTile icon="activity" value={fmt(stats?.avg_score)} label="Avg risk score" />
-          <StatTile icon="zap" value={fmt(stats?.avg_latency_ms, 1)} label="Avg latency (ms)" />
-          <StatTile icon="message-square" value={stats?.feedback_count ?? '--'} label="Feedback received" />
-          <StatTile icon="star" value={fmt(stats?.avg_user_rating, 2)} label="Avg user rating" wide />
-        </Card>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.statRow}>
+          <StatChip icon="database" value={stats?.total_predictions ?? '--'} label="Predictions" />
+          <StatChip icon="activity" value={fmt(stats?.avg_score)} label="Avg risk score" />
+          <StatChip icon="zap" value={fmt(stats?.avg_latency_ms, 1)} label="Avg latency (ms)" />
+          <StatChip icon="message-square" value={stats?.feedback_count ?? '--'} label="Feedback received" />
+          <StatChip icon="star" value={fmt(stats?.avg_user_rating, 2)} label="Avg user rating" />
+        </ScrollView>
 
-        <ChartCard icon="bar-chart-2" title="Score distribution">
-          <ScoreHistogram bins={stats?.score_histogram ?? []} />
-        </ChartCard>
+        <SegmentedTabs options={VIEW_OPTIONS} value={view} onChange={setView} />
 
-        <ChartCard icon="pie-chart" title="Risk category breakdown">
-          <CategoryDonut counts={stats?.category_counts ?? {}} />
-        </ChartCard>
-
-        <ChartCard icon="map" title="Top districts">
-          <DistrictBars counts={stats?.district_counts ?? {}} />
-        </ChartCard>
-
-        <ChartCard icon="list" title="Recent predictions">
-          <RecentPredictions stats={stats} />
+        <ChartCard icon={activeView.icon} title={activeView.title}>
+          {view === 'score' && <ScoreHistogram bins={stats?.score_histogram ?? []} />}
+          {view === 'categories' && <CategoryDonut counts={stats?.category_counts ?? {}} />}
+          {view === 'districts' && <DistrictBars counts={stats?.district_counts ?? {}} />}
+          {view === 'recent' && <RecentPredictions stats={stats} />}
         </ChartCard>
       </ScrollView>
     </SafeAreaView>
@@ -368,48 +351,10 @@ const styles = StyleSheet.create({
     fontSize: 11.5,
   },
 
-  // Stat grid
-  statGrid: {
+  // Stat strip
+  statRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.two + 2,
-  },
-  statTile: {
-    flexBasis: '46%',
-    flexGrow: 1,
-    gap: Spacing.two,
-  },
-  statTileWide: {
-    flexBasis: '100%',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two + 2,
-  },
-  statTileBody: {
-    gap: Spacing.half,
-  },
-  statTileWideBody: {
-    gap: Spacing.half,
-  },
-  statIconBox: {
-    width: 30,
-    height: 30,
-    borderRadius: Radius.sm,
-    backgroundColor: 'rgba(56,189,248,0.12)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  statValue: {
-    fontFamily: Fonts.extrabold,
-    fontSize: 22,
-    fontVariant: ['tabular-nums'],
-  },
-  statLabel: {
-    color: Colors.textMuted,
-    fontFamily: Fonts.semibold,
-    fontSize: 11,
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
+    gap: Spacing.three,
   },
 
   // Chart cards
