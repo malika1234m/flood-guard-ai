@@ -169,7 +169,16 @@ def _compute_live_risks() -> list[LiveDistrictRisk]:
             ts = tp["flood_risk_score"]
             delta = round(ls - ts, 4)
 
-            trend = "Worsening" if delta > 0.012 else "Improving" if delta < -0.012 else "Stable"
+            # Trend: did live rainfall push us into a worse category?
+            CAT_RANK = {"Low": 0, "Moderate": 1, "High": 2, "Severe": 3}
+            live_rank = CAT_RANK.get(lp["risk_category"], 0)
+            typ_rank = CAT_RANK.get(tp["risk_category"], 0)
+            if live_rank > typ_rank:
+                trend = "Worsening"
+            elif live_rank < typ_rank:
+                trend = "Improving"
+            else:
+                trend = "Stable"
 
             results.append(LiveDistrictRisk(
                 district=district,
@@ -202,28 +211,34 @@ def get_alerts():
     alert_list: list[FloodAlert] = []
 
     for r in live:
-        # Calibrated to actual model score range (0.45–0.65 typical)
-        if r.live_score >= 0.60 or r.live_category == "Severe":
+        # Alert logic: trust the ML model's own category — no invented thresholds.
+        # Rule 1: model says Severe or High based on real rainfall → always alert.
+        # Rule 2: live rainfall pushed category higher than typical baseline → alert.
+        if r.live_category == "Severe":
             severity = "Severe"
-        elif r.live_score >= 0.54 and r.live_category == "High":
+        elif r.live_category == "High" and (r.trend == "Worsening" or r.typical_category in ("Low", "Moderate")):
+            # High AND either got worse vs baseline, or baseline was lower (real uplift)
             severity = "High"
-        elif r.live_score >= 0.44 and r.trend == "Worsening":
+        elif r.trend == "Worsening" and r.live_category == "Moderate":
+            # Rainfall pushed a typically-lower district into Moderate
             severity = "Moderate"
         else:
             continue
 
         rain_note = f" {r.rainfall_7d_mm:.0f} mm recorded this week." if r.rainfall_7d_mm > 0 else ""
-        trend_note = " Conditions are worsening." if r.trend == "Worsening" else ""
+        category_change = r.live_category != r.typical_category
+        change_note = (f" Rainfall has elevated this district from {r.typical_category} to {r.live_category} risk."
+                       if category_change else "")
 
         if severity == "Severe":
             msg = (f"Extreme flood risk in {r.district}.{rain_note}"
-                   f"{trend_note} Evacuate low-lying areas and follow official advisories.")
+                   f"{change_note} Evacuate low-lying areas and follow official advisories.")
         elif severity == "High":
             msg = (f"High flood risk in {r.district}.{rain_note}"
-                   f"{trend_note} Monitor water levels and keep emergency contacts ready.")
+                   f"{change_note} Monitor water levels and keep emergency contacts ready.")
         else:
             msg = (f"Elevated flood risk in {r.district}.{rain_note}"
-                   " Conditions worsening — stay informed and avoid flood-prone zones.")
+                   f"{change_note} Stay informed and avoid flood-prone zones.")
 
         alert_list.append(FloodAlert(
             district=r.district,

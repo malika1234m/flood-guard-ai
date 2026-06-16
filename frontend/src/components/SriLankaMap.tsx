@@ -225,14 +225,12 @@ export function SriLankaMap() {
                   const risk = riskMap[district];
                   const ld = liveMap[district]; // live delta data
 
-                  // In live mode: color by trend delta, not risk category
+                  // In live mode: color by model's own trend (category change), not a made-up delta threshold
                   let fill: string;
                   if (mode === "live" && ld) {
-                    const d = ld.trend_delta;
-                    fill = d >= 0.025 ? "#ef4444"   // strongly worsening
-                         : d >= 0.012 ? "#f97316"   // worsening
-                         : d <= -0.012 ? "#22c55e"  // improving
-                         : "#eab308";               // stable
+                    fill = ld.trend === "Worsening" ? "#f97316"   // real category uplift
+                         : ld.trend === "Improving" ? "#22c55e"   // real category drop
+                         : RISK_FILL[ld.live_category] ?? "#eab308"; // stable — show actual risk colour
                   } else {
                     fill = risk ? (RISK_FILL[risk.category] ?? "#38bdf8") : "rgba(56,189,248,0.3)";
                   }
