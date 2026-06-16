@@ -185,8 +185,40 @@ export interface DistrictRisk {
   category: string;
 }
 
+export interface LiveDistrictRisk {
+  district: string;
+  live_score: number;
+  typical_score: number;
+  live_category: string;
+  typical_category: string;
+  rainfall_7d_mm: number;
+  typical_rainfall_7d_mm: number;
+  trend: 'Worsening' | 'Improving' | 'Stable';
+  trend_delta: number;
+  weather_live: boolean;
+}
+
+export interface FloodAlert {
+  district: string;
+  severity: 'Severe' | 'High' | 'Moderate';
+  live_score: number;
+  typical_score: number;
+  trend: string;
+  trend_delta: number;
+  rainfall_7d_mm: number;
+  message: string;
+}
+
 export function getDistrictRisks() {
   return request<DistrictRisk[]>('/district-risks');
+}
+
+export function getLiveRisks() {
+  return request<LiveDistrictRisk[]>('/live-risks');
+}
+
+export function getAlerts() {
+  return request<FloodAlert[]>('/alerts');
 }
 
 export const BASE_MODEL_NAMES: Record<string, string> = {

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { RefreshCw } from "lucide-react";
+import { AlertBanner } from "@/components/AlertBanner";
 import { SriLankaMap } from "@/components/SriLankaMap";
 import {
   Bar,
@@ -217,6 +218,8 @@ export function Dashboard() {
           </>
         }
       />
+
+      <AlertBanner />
 
       <div className="mb-4.5 grid gap-3.5 [grid-template-columns:repeat(auto-fit,minmax(160px,1fr))]">
         <StatCard value={stats?.total_predictions ?? "--"} label="Predictions" />

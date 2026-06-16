@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { getDistrictRisks, getModelInfo, type DistrictRisk, type ModelInfo } from "@/lib/api";
+import { getDistrictRisks, getLiveRisks, getModelInfo, type DistrictRisk, type LiveDistrictRisk, type ModelInfo } from "@/lib/api";
 
 // Coastline derived from real lat/lon using the same projection as the bubbles:
 //   x = 10 + ((lon - 79.6) / 2.4) * 260   y = 10 + ((9.9 - lat) / 4.03) * 400
@@ -29,8 +29,17 @@ interface TooltipData {
   svgY: number;
 }
 
+const TREND_ARROW: Record<string, string> = {
+  Worsening: "↑",
+  Improving: "↓",
+  Stable: "",
+};
+
 export function SriLankaMap() {
+  const [mode, setMode] = useState<"typical" | "live">("typical");
   const [risks, setRisks] = useState<DistrictRisk[]>([]);
+  const [liveRisks, setLiveRisks] = useState<LiveDistrictRisk[]>([]);
+  const [liveLoading, setLiveLoading] = useState(false);
   const [profiles, setProfiles] = useState<ModelInfo["district_profiles"] | null>(null);
   const [loading, setLoading] = useState(true);
   const [tooltip, setTooltip] = useState<TooltipData | null>(null);
@@ -46,16 +55,35 @@ export function SriLankaMap() {
       .finally(() => setLoading(false));
   }, []);
 
-  const riskMap = Object.fromEntries(risks.map((r) => [r.district, r]));
+  useEffect(() => {
+    if (mode !== "live" || liveRisks.length > 0) return;
+    setLiveLoading(true);
+    getLiveRisks()
+      .then(setLiveRisks)
+      .catch(() => {})
+      .finally(() => setLiveLoading(false));
+  }, [mode, liveRisks.length]);
+
+  // Unified risk map for current mode
+  const riskMap = mode === "live"
+    ? Object.fromEntries(liveRisks.map((r) => [r.district, {
+        district: r.district,
+        score: r.live_score,
+        category: r.live_category,
+      } as DistrictRisk]))
+    : Object.fromEntries(risks.map((r) => [r.district, r]));
+
+  const liveMap = Object.fromEntries(liveRisks.map((r) => [r.district, r]));
 
   // Count districts by category for legend
-  const categoryCounts = risks.reduce<Record<string, number>>((acc, r) => {
+  const activeRisks = mode === "live" ? Object.values(riskMap) : risks;
+  const categoryCounts = activeRisks.reduce<Record<string, number>>((acc, r) => {
     acc[r.category] = (acc[r.category] ?? 0) + 1;
     return acc;
   }, {});
 
   // Highest-risk district
-  const topRisk = risks.reduce<DistrictRisk | null>(
+  const topRisk = activeRisks.reduce<DistrictRisk | null>(
     (best, r) => (!best || r.score > best.score ? r : best),
     null
   );
@@ -68,14 +96,34 @@ export function SriLankaMap() {
           <div className="mb-1 flex items-center gap-2">
             <span className="pulse-dot" />
             <span className="text-[0.7rem] font-semibold uppercase tracking-[0.06em] text-brand">
-              Live · {risks.length} districts scored
+              {mode === "live" ? "Open-Meteo · real rainfall" : "Typical profiles"} · {activeRisks.length} districts
             </span>
           </div>
           <h3 className="text-[1.1rem] font-extrabold leading-tight">Sri Lanka Flood Risk Map</h3>
           <p className="mt-0.5 text-[0.78rem] leading-snug text-muted-foreground">
-            Each district scored using its typical climate &amp; terrain profile.
-            Hover to inspect · values from the live prediction engine.
+            {mode === "live"
+              ? "Scores driven by real-time 7-day rainfall from Open-Meteo. ↑ worsening vs typical."
+              : "Each district scored using its typical climate & terrain profile."}
           </p>
+        </div>
+        {/* Live / Typical toggle */}
+        <div className="flex shrink-0 flex-col items-end gap-2">
+          <div className="flex overflow-hidden rounded-lg border border-border bg-card text-[0.72rem] font-semibold">
+            <button
+              onClick={() => setMode("typical")}
+              className={`px-3 py-1.5 transition-colors ${mode === "typical" ? "bg-brand text-white" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              Typical
+            </button>
+            <button
+              onClick={() => setMode("live")}
+              disabled={liveLoading}
+              className={`flex items-center gap-1.5 px-3 py-1.5 transition-colors ${mode === "live" ? "bg-brand text-white" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              {liveLoading ? <span className="pulse-dot" /> : <span className="h-1.5 w-1.5 rounded-full bg-green-400" />}
+              Live
+            </button>
+          </div>
         </div>
         {topRisk && (
           <div
@@ -208,30 +256,47 @@ export function SriLankaMap() {
           </svg>
 
           {/* floating tooltip — positioned relative to the container div */}
-          {tooltip && (
-            <div
-              className="pointer-events-none absolute z-20 min-w-[140px] rounded-xl border border-border bg-panel-2 p-3 shadow-xl transition-all"
-              style={{
-                left: `${(tooltip.svgX / 280) * 100}%`,
-                top: `${(tooltip.svgY / 420) * 100}%`,
-                transform: tooltip.svgX > 180 ? "translate(-110%, -110%)" : "translate(8px, -110%)",
-              }}
-            >
-              <div className="mb-1 text-[0.8rem] font-bold leading-tight">{tooltip.district}</div>
+          {tooltip && (() => {
+            const live = liveMap[tooltip.district];
+            const c = RISK_FILL[tooltip.risk.category] ?? "#38bdf8";
+            return (
               <div
-                className="mb-1.5 inline-block rounded-full px-2 py-0.5 text-[0.65rem] font-bold"
+                className="pointer-events-none absolute z-20 min-w-[155px] rounded-xl border border-border bg-panel-2 p-3 shadow-xl"
                 style={{
-                  color: RISK_FILL[tooltip.risk.category] ?? "#38bdf8",
-                  backgroundColor: `${RISK_FILL[tooltip.risk.category] ?? "#38bdf8"}20`,
+                  left: `${(tooltip.svgX / 280) * 100}%`,
+                  top: `${(tooltip.svgY / 420) * 100}%`,
+                  transform: tooltip.svgX > 180 ? "translate(-110%, -110%)" : "translate(8px, -110%)",
                 }}
               >
-                {tooltip.risk.category} Risk
+                <div className="mb-1 text-[0.8rem] font-bold leading-tight">{tooltip.district}</div>
+                <div
+                  className="mb-1.5 inline-block rounded-full px-2 py-0.5 text-[0.65rem] font-bold"
+                  style={{ color: c, backgroundColor: `${c}20` }}
+                >
+                  {tooltip.risk.category} Risk
+                </div>
+                <div className="tabular-nums text-[1.1rem] font-extrabold" style={{ color: c }}>
+                  {tooltip.risk.score.toFixed(3)}
+                </div>
+                {mode === "live" && live && (
+                  <div className="mt-1.5 border-t border-border pt-1.5">
+                    <div className="flex items-center justify-between gap-2 text-[0.68rem] text-muted-foreground">
+                      <span>vs typical</span>
+                      <span
+                        className="font-bold"
+                        style={{ color: live.trend === "Worsening" ? "#ef4444" : live.trend === "Improving" ? "#22c55e" : "#94a3b8" }}
+                      >
+                        {TREND_ARROW[live.trend]}{live.trend_delta > 0 ? "+" : ""}{live.trend_delta.toFixed(3)} {live.trend}
+                      </span>
+                    </div>
+                    <div className="mt-0.5 text-[0.68rem] text-muted-foreground">
+                      Rain 7d: <span className="font-semibold text-foreground">{live.rainfall_7d_mm} mm</span>
+                    </div>
+                  </div>
+                )}
               </div>
-              <div className="tabular-nums text-[1.1rem] font-extrabold" style={{ color: RISK_FILL[tooltip.risk.category] }}>
-                {tooltip.risk.score.toFixed(3)}
-              </div>
-            </div>
-          )}
+            );
+          })()}
         </div>
       </div>
 

@@ -3,7 +3,14 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-nati
 import Svg, { Circle, Defs, G, Polygon, RadialGradient, Stop } from 'react-native-svg';
 
 import { Colors, Fonts, RISK_COLORS, Radius, Spacing } from '@/constants/theme';
-import { getDistrictRisks, getModelInfo, type DistrictProfile, type DistrictRisk } from '@/lib/api';
+import {
+  getDistrictRisks,
+  getLiveRisks,
+  getModelInfo,
+  type DistrictProfile,
+  type DistrictRisk,
+  type LiveDistrictRisk,
+} from '@/lib/api';
 
 const ISLAND_POINTS =
   '23,99 24,87 35,70 39,50 36,32 58,21 80,17 93,24 99,38 99,65 142,73 153,99 173,127 187,140 200,164 221,199 238,225 253,268 252,314 246,343 232,367 194,387 176,384 117,405 111,401 77,392 59,377 52,348 37,305 38,278 35,195 34,149 27,112';
@@ -27,8 +34,17 @@ function districtRadius(score: number): number {
   return 5 + score * 6; // 5 → 11 based on risk
 }
 
+const TREND_COLOR: Record<string, string> = {
+  Worsening: Colors.riskSevere,
+  Improving: Colors.riskLow,
+  Stable: Colors.textMuted,
+};
+
 export function SriLankaMap() {
+  const [mode, setMode] = useState<'typical' | 'live'>('typical');
   const [risks, setRisks] = useState<DistrictRisk[]>([]);
+  const [liveRisks, setLiveRisks] = useState<LiveDistrictRisk[]>([]);
+  const [liveLoading, setLiveLoading] = useState(false);
   const [profiles, setProfiles] = useState<Record<string, DistrictProfile> | null>(null);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<string | null>(null);
@@ -43,10 +59,25 @@ export function SriLankaMap() {
       .finally(() => setLoading(false));
   }, []);
 
-  const riskMap = Object.fromEntries(risks.map((r) => [r.district, r]));
-  const selectedRisk = selected ? riskMap[selected] : null;
+  useEffect(() => {
+    if (mode !== 'live' || liveRisks.length > 0) return;
+    setLiveLoading(true);
+    getLiveRisks()
+      .then(setLiveRisks)
+      .catch(() => {})
+      .finally(() => setLiveLoading(false));
+  }, [mode, liveRisks.length]);
 
-  const categoryCounts = risks.reduce<Record<string, number>>((acc, r) => {
+  const riskMap = mode === 'live'
+    ? Object.fromEntries(liveRisks.map((r) => [r.district, { district: r.district, score: r.live_score, category: r.live_category } as DistrictRisk]))
+    : Object.fromEntries(risks.map((r) => [r.district, r]));
+
+  const liveMap = Object.fromEntries(liveRisks.map((r) => [r.district, r]));
+  const selectedRisk = selected ? riskMap[selected] : null;
+  const selectedLive = selected ? liveMap[selected] : null;
+
+  const activeRisks = Object.values(riskMap);
+  const categoryCounts = activeRisks.reduce<Record<string, number>>((acc, r) => {
     acc[r.category] = (acc[r.category] ?? 0) + 1;
     return acc;
   }, {});
@@ -64,10 +95,36 @@ export function SriLankaMap() {
     <View style={styles.container}>
       {/* ── Header ── */}
       <View style={styles.mapHeader}>
-        <Text style={styles.mapTitle}>Live Risk Map · Sri Lanka</Text>
-        <Text style={styles.mapSubtitle}>
-          {risks.length} districts · tap to inspect
-        </Text>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.mapTitle}>
+            {mode === 'live' ? 'Live Risk Map · Open-Meteo' : 'Typical Risk Map · Sri Lanka'}
+          </Text>
+          <Text style={styles.mapSubtitle}>
+            {activeRisks.length} districts · tap to inspect
+            {mode === 'live' && '  ↑ worsening vs typical'}
+          </Text>
+        </View>
+        {/* Live / Typical toggle */}
+        <View style={styles.modeToggle}>
+          <Pressable
+            style={[styles.modeBtn, mode === 'typical' && styles.modeBtnActive]}
+            onPress={() => setMode('typical')}
+          >
+            <Text style={[styles.modeBtnText, mode === 'typical' && styles.modeBtnTextActive]}>
+              Typical
+            </Text>
+          </Pressable>
+          <Pressable
+            style={[styles.modeBtn, mode === 'live' && styles.modeBtnActive]}
+            onPress={() => setMode('live')}
+            disabled={liveLoading}
+          >
+            <View style={[styles.liveDot, { backgroundColor: mode === 'live' ? '#fff' : Colors.riskLow }]} />
+            <Text style={[styles.modeBtnText, mode === 'live' && styles.modeBtnTextActive]}>
+              {liveLoading ? 'Loading…' : 'Live'}
+            </Text>
+          </Pressable>
+        </View>
       </View>
 
       {/* ── SVG Map ── */}
@@ -157,6 +214,12 @@ export function SriLankaMap() {
                 {selectedRisk.score.toFixed(3)}
               </Text>
             </View>
+            {mode === 'live' && selectedLive && (
+              <Text style={[styles.trendText, { color: TREND_COLOR[selectedLive.trend] }]}>
+                {selectedLive.trend === 'Worsening' ? '↑' : selectedLive.trend === 'Improving' ? '↓' : '→'}{' '}
+                {selectedLive.trend} · {selectedLive.rainfall_7d_mm.toFixed(0)} mm rain
+              </Text>
+            )}
           </View>
           <View
             style={[
@@ -210,7 +273,9 @@ const styles = StyleSheet.create({
 
   /* Header */
   mapHeader: {
-    gap: 2,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Spacing.two,
   },
   mapTitle: {
     color: Colors.text,
@@ -221,6 +286,38 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     fontFamily: Fonts.regular,
     fontSize: 11,
+  },
+
+  /* Mode toggle */
+  modeToggle: {
+    flexDirection: 'row',
+    borderRadius: Radius.sm,
+    borderWidth: 1,
+    borderColor: Colors.line,
+    overflow: 'hidden',
+  },
+  modeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  modeBtnActive: {
+    backgroundColor: Colors.brand,
+  },
+  modeBtnText: {
+    color: Colors.textMuted,
+    fontFamily: Fonts.semibold,
+    fontSize: 11,
+  },
+  modeBtnTextActive: {
+    color: '#fff',
+  },
+  liveDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
 
   /* SVG */
@@ -261,6 +358,11 @@ const styles = StyleSheet.create({
   selectedScore: {
     fontFamily: Fonts.extrabold,
     fontSize: 18,
+  },
+  trendText: {
+    fontFamily: Fonts.semibold,
+    fontSize: 10,
+    marginTop: 2,
   },
   selectedBadge: {
     borderRadius: Radius.full,

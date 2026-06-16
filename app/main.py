@@ -25,7 +25,9 @@ from . import monitoring
 from .schemas import (
     DistrictRisk,
     FeedbackRequest,
+    FloodAlert,
     HealthResponse,
+    LiveDistrictRisk,
     ModelInfo,
     PredictRequest,
     PredictResponse,
@@ -131,6 +133,112 @@ def district_risks():
         except Exception:
             pass
     return sorted(results, key=lambda r: r.district)
+
+
+def _compute_live_risks() -> list[LiveDistrictRisk]:
+    """Core logic shared by /live-risks and /alerts."""
+    from .weather import get_all_weather
+
+    if predictor is None:
+        raise HTTPException(status_code=503, detail="Model not loaded")
+
+    weather = get_all_weather(predictor.district_profiles)
+    results: list[LiveDistrictRisk] = []
+
+    for district, profile in predictor.district_profiles.items():
+        w = weather.get(district, {})
+        live_7d = w.get("rainfall_7d_mm")
+        typical_7d = float(profile.get("rainfall_7d_mm") or 0)
+
+        # Build live record — only override rainfall if we got real data
+        live_record = {**profile, "district": district}
+        weather_live = live_7d is not None
+        if weather_live:
+            live_record["rainfall_7d_mm"] = live_7d
+            typical_monthly = float(profile.get("monthly_rainfall_mm") or 0)
+            if typical_7d > 0:
+                live_record["monthly_rainfall_mm"] = typical_monthly * (live_7d / typical_7d)
+
+        typical_record = {**profile, "district": district}
+
+        try:
+            lp = predictor.predict(live_record)
+            tp = predictor.predict(typical_record)
+
+            ls = lp["flood_risk_score"]
+            ts = tp["flood_risk_score"]
+            delta = round(ls - ts, 4)
+
+            trend = "Worsening" if delta > 0.04 else "Improving" if delta < -0.04 else "Stable"
+
+            results.append(LiveDistrictRisk(
+                district=district,
+                live_score=round(ls, 4),
+                typical_score=round(ts, 4),
+                live_category=lp["risk_category"],
+                typical_category=tp["risk_category"],
+                rainfall_7d_mm=round(live_7d if weather_live else typical_7d, 1),
+                typical_rainfall_7d_mm=round(typical_7d, 1),
+                trend=trend,
+                trend_delta=delta,
+                weather_live=weather_live,
+            ))
+        except Exception:
+            pass
+
+    return sorted(results, key=lambda r: r.live_score, reverse=True)
+
+
+@app.get("/live-risks", response_model=list[LiveDistrictRisk])
+def live_risks():
+    """Score all districts with real-time rainfall data from Open-Meteo."""
+    return _compute_live_risks()
+
+
+@app.get("/alerts", response_model=list[FloodAlert])
+def get_alerts():
+    """Return active flood alerts for districts above risk thresholds."""
+    live = _compute_live_risks()
+    alert_list: list[FloodAlert] = []
+
+    for r in live:
+        if r.live_score >= 0.75:
+            severity = "Severe"
+        elif r.live_score >= 0.60:
+            severity = "High"
+        elif r.live_score >= 0.45 and r.trend == "Worsening":
+            severity = "Moderate"
+        else:
+            continue
+
+        if r.trend == "Worsening" and severity == "Severe":
+            msg = (f"Extreme flood risk in {r.district}. "
+                   f"{r.rainfall_7d_mm:.0f} mm rainfall this week — evacuate low-lying areas immediately.")
+        elif r.trend == "Worsening" and severity == "High":
+            msg = (f"High flood risk in {r.district}. "
+                   f"{r.rainfall_7d_mm:.0f} mm rainfall this week and conditions are worsening.")
+        elif severity == "Severe":
+            msg = (f"Severe flood risk in {r.district}. "
+                   "Avoid flood-prone zones and stay alert to local advisories.")
+        elif severity == "High":
+            msg = (f"High flood risk in {r.district}. "
+                   "Monitor water levels and keep emergency contacts ready.")
+        else:
+            msg = (f"Moderate flood risk in {r.district}. "
+                   "Conditions worsening — stay informed and avoid low-lying areas.")
+
+        alert_list.append(FloodAlert(
+            district=r.district,
+            severity=severity,
+            live_score=r.live_score,
+            typical_score=r.typical_score,
+            trend=r.trend,
+            trend_delta=r.trend_delta,
+            rainfall_7d_mm=r.rainfall_7d_mm,
+            message=msg,
+        ))
+
+    return alert_list
 
 
 @app.post("/feedback")

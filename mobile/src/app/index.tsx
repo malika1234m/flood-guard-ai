@@ -12,6 +12,7 @@ import { Card } from '@/components/ui/Card';
 import { Carousel } from '@/components/ui/Carousel';
 import { GlowDivider } from '@/components/ui/GlowDivider';
 import { GradientText } from '@/components/ui/GradientText';
+import { AlertBanner } from '@/components/ui/AlertBanner';
 import { LiveRiskCard } from '@/components/ui/LiveRiskCard';
 import { PulseDot } from '@/components/ui/PulseDot';
 import { SectionHeader } from '@/components/ui/SectionHeader';
@@ -118,6 +119,11 @@ export default function HomeScreen() {
               </Text>
             </View>
           )}
+        </View>
+
+        {/* Live flood alerts */}
+        <View style={styles.section}>
+          <AlertBanner />
         </View>
 
         {/* Live geolocation risk preview */}

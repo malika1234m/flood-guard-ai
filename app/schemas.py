@@ -139,3 +139,27 @@ class HealthResponse(BaseModel):
     status: str
     model_version: str
     model_loaded: bool
+
+
+class LiveDistrictRisk(BaseModel):
+    district: str
+    live_score: float
+    typical_score: float
+    live_category: str
+    typical_category: str
+    rainfall_7d_mm: float          # actual live value (or typical if API unavailable)
+    typical_rainfall_7d_mm: float
+    trend: str                     # "Worsening" | "Improving" | "Stable"
+    trend_delta: float             # live_score − typical_score
+    weather_live: bool             # True if real weather was fetched
+
+
+class FloodAlert(BaseModel):
+    district: str
+    severity: str                  # "Severe" | "High" | "Moderate"
+    live_score: float
+    typical_score: float
+    trend: str
+    trend_delta: float
+    rainfall_7d_mm: float
+    message: str
