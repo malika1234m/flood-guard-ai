@@ -169,7 +169,7 @@ def _compute_live_risks() -> list[LiveDistrictRisk]:
             ts = tp["flood_risk_score"]
             delta = round(ls - ts, 4)
 
-            trend = "Worsening" if delta > 0.04 else "Improving" if delta < -0.04 else "Stable"
+            trend = "Worsening" if delta > 0.012 else "Improving" if delta < -0.012 else "Stable"
 
             results.append(LiveDistrictRisk(
                 district=district,
@@ -202,30 +202,28 @@ def get_alerts():
     alert_list: list[FloodAlert] = []
 
     for r in live:
-        if r.live_score >= 0.75:
+        # Calibrated to actual model score range (0.45–0.65 typical)
+        if r.live_score >= 0.60 or r.live_category == "Severe":
             severity = "Severe"
-        elif r.live_score >= 0.60:
+        elif r.live_score >= 0.54 and r.live_category == "High":
             severity = "High"
-        elif r.live_score >= 0.45 and r.trend == "Worsening":
+        elif r.live_score >= 0.44 and r.trend == "Worsening":
             severity = "Moderate"
         else:
             continue
 
-        if r.trend == "Worsening" and severity == "Severe":
-            msg = (f"Extreme flood risk in {r.district}. "
-                   f"{r.rainfall_7d_mm:.0f} mm rainfall this week — evacuate low-lying areas immediately.")
-        elif r.trend == "Worsening" and severity == "High":
-            msg = (f"High flood risk in {r.district}. "
-                   f"{r.rainfall_7d_mm:.0f} mm rainfall this week and conditions are worsening.")
-        elif severity == "Severe":
-            msg = (f"Severe flood risk in {r.district}. "
-                   "Avoid flood-prone zones and stay alert to local advisories.")
+        rain_note = f" {r.rainfall_7d_mm:.0f} mm recorded this week." if r.rainfall_7d_mm > 0 else ""
+        trend_note = " Conditions are worsening." if r.trend == "Worsening" else ""
+
+        if severity == "Severe":
+            msg = (f"Extreme flood risk in {r.district}.{rain_note}"
+                   f"{trend_note} Evacuate low-lying areas and follow official advisories.")
         elif severity == "High":
-            msg = (f"High flood risk in {r.district}. "
-                   "Monitor water levels and keep emergency contacts ready.")
+            msg = (f"High flood risk in {r.district}.{rain_note}"
+                   f"{trend_note} Monitor water levels and keep emergency contacts ready.")
         else:
-            msg = (f"Moderate flood risk in {r.district}. "
-                   "Conditions worsening — stay informed and avoid low-lying areas.")
+            msg = (f"Elevated flood risk in {r.district}.{rain_note}"
+                   " Conditions worsening — stay informed and avoid flood-prone zones.")
 
         alert_list.append(FloodAlert(
             district=r.district,

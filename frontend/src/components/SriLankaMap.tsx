@@ -32,7 +32,7 @@ interface TooltipData {
 const TREND_ARROW: Record<string, string> = {
   Worsening: "↑",
   Improving: "↓",
-  Stable: "",
+  Stable: "·",
 };
 
 export function SriLankaMap() {
