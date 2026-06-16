@@ -205,20 +205,45 @@ export function SriLankaMap() {
               strokeLinejoin="round"
             />
 
-            {/* district bubbles — render severe/high last so they're on top */}
+            {/* Live mode badge */}
+            {mode === "live" && (
+              <text x="140" y="14" textAnchor="middle" fontSize="7" fill="rgba(56,189,248,0.7)" fontWeight="bold" letterSpacing="1">
+                ◉ LIVE · OPEN-METEO RAINFALL
+              </text>
+            )}
+
+            {/* district bubbles */}
             {profiles &&
               [...Object.entries(profiles)]
                 .sort(([a], [b]) => {
                   const scoreA = riskMap[a]?.score ?? 0;
                   const scoreB = riskMap[b]?.score ?? 0;
-                  return scoreA - scoreB; // ascending so high risk renders on top
+                  return scoreA - scoreB;
                 })
                 .map(([district, profile]) => {
                   const [x, y] = project(profile.latitude, profile.longitude);
                   const risk = riskMap[district];
-                  const fill = risk ? (RISK_FILL[risk.category] ?? "#38bdf8") : "rgba(56,189,248,0.3)";
+                  const ld = liveMap[district]; // live delta data
+
+                  // In live mode: color by trend delta, not risk category
+                  let fill: string;
+                  if (mode === "live" && ld) {
+                    const d = ld.trend_delta;
+                    fill = d >= 0.025 ? "#ef4444"   // strongly worsening
+                         : d >= 0.012 ? "#f97316"   // worsening
+                         : d <= -0.012 ? "#22c55e"  // improving
+                         : "#eab308";               // stable
+                  } else {
+                    fill = risk ? (RISK_FILL[risk.category] ?? "#38bdf8") : "rgba(56,189,248,0.3)";
+                  }
+
                   const isHigh = risk?.category === "Severe" || risk?.category === "High";
                   const ringClass = risk?.category === "Severe" ? "ring-severe" : risk?.category === "High" ? "ring-high" : "";
+                  const isHovered = tooltip?.district === district;
+                  // In live mode scale radius by rainfall intensity
+                  const baseR = mode === "live" && ld
+                    ? Math.max(5, Math.min(10, 5 + ld.rainfall_7d_mm / 12))
+                    : 7;
 
                   return (
                     <g
@@ -227,29 +252,40 @@ export function SriLankaMap() {
                       onMouseEnter={() => risk && setTooltip({ district, risk, svgX: x, svgY: y })}
                       onMouseLeave={() => setTooltip(null)}
                     >
-                      {/* pulsing ring for Severe / High */}
-                      {isHigh && (
-                        <circle
-                          cx={x}
-                          cy={y}
-                          r={8}
-                          fill={fill}
-                          opacity={0.45}
-                          className={ringClass}
-                        />
+                      {/* pulsing ring — typical mode only */}
+                      {mode === "typical" && isHigh && (
+                        <circle cx={x} cy={y} r={8} fill={fill} opacity={0.45} className={ringClass} />
+                      )}
+                      {/* worsening glow ring in live mode */}
+                      {mode === "live" && ld && ld.trend === "Worsening" && (
+                        <circle cx={x} cy={y} r={baseR + 4} fill={fill} opacity={0.18} className="ring-high" />
                       )}
                       {/* main bubble */}
                       <circle
                         cx={x}
                         cy={y}
-                        r={tooltip?.district === district ? 10 : 7}
+                        r={isHovered ? baseR + 3 : baseR}
                         fill={fill}
-                        opacity={tooltip?.district === district ? 1 : 0.8}
-                        stroke={tooltip?.district === district ? "#fff" : "rgba(0,0,0,0.2)"}
-                        strokeWidth={tooltip?.district === district ? 1.5 : 0.5}
-                        filter={isHigh ? "url(#bubble-glow)" : undefined}
+                        opacity={isHovered ? 1 : 0.85}
+                        stroke={isHovered ? "#fff" : mode === "live" && ld?.trend === "Worsening" ? fill : "rgba(0,0,0,0.2)"}
+                        strokeWidth={isHovered ? 1.5 : mode === "live" && ld?.trend === "Worsening" ? 1.2 : 0.5}
+                        filter={isHigh || (mode === "live" && ld?.trend === "Worsening") ? "url(#bubble-glow)" : undefined}
                         style={{ transition: "r 0.15s ease, opacity 0.15s ease" }}
                       />
+                      {/* trend arrow in live mode */}
+                      {mode === "live" && ld && ld.trend !== "Stable" && (
+                        <text
+                          x={x}
+                          y={y - baseR - 2}
+                          textAnchor="middle"
+                          fontSize="7"
+                          fontWeight="bold"
+                          fill={fill}
+                          style={{ pointerEvents: "none", userSelect: "none" }}
+                        >
+                          {ld.trend === "Worsening" ? "↑" : "↓"}
+                        </text>
+                      )}
                     </g>
                   );
                 })}
@@ -300,21 +336,24 @@ export function SriLankaMap() {
         </div>
       </div>
 
-      {/* ── Category breakdown strip ── */}
-      {risks.length > 0 && (
+      {/* ── Legend strip ── */}
+      {mode === "live" && liveRisks.length > 0 ? (
+        <div className="flex flex-wrap items-center justify-center gap-3">
+          {([ ["↑ Worsening", "#f97316"], ["· Stable", "#eab308"], ["↓ Improving", "#22c55e"] ] as [string,string][]).map(([label, color]) => (
+            <div key={label} className="flex items-center gap-1.5">
+              <div className="h-2 w-2 rounded-full" style={{ backgroundColor: color }} />
+              <span className="text-[0.72rem] font-semibold" style={{ color }}>{label}</span>
+            </div>
+          ))}
+          <span className="text-[0.68rem] text-muted-foreground">· size = rainfall</span>
+        </div>
+      ) : risks.length > 0 && (
         <div className="flex flex-wrap items-center justify-center gap-3">
           {RISK_ORDER.filter((cat) => categoryCounts[cat]).map((cat) => (
             <div key={cat} className="flex items-center gap-1.5">
-              <div
-                className="h-2 w-2 rounded-full"
-                style={{ backgroundColor: RISK_FILL[cat] }}
-              />
-              <span className="text-[0.72rem] font-semibold" style={{ color: RISK_FILL[cat] }}>
-                {cat}
-              </span>
-              <span className="text-[0.72rem] text-muted-foreground">
-                {categoryCounts[cat]}
-              </span>
+              <div className="h-2 w-2 rounded-full" style={{ backgroundColor: RISK_FILL[cat] }} />
+              <span className="text-[0.72rem] font-semibold" style={{ color: RISK_FILL[cat] }}>{cat}</span>
+              <span className="text-[0.72rem] text-muted-foreground">{categoryCounts[cat]}</span>
             </div>
           ))}
         </div>
