@@ -6,7 +6,7 @@ import { Colors, Fonts, RISK_COLORS, Radius, Spacing } from '@/constants/theme';
 import { getDistrictRisks, getModelInfo, type DistrictProfile, type DistrictRisk } from '@/lib/api';
 
 const ISLAND_POINTS =
-  '54,18 142,73 145,94 187,142 189,169 235,226 245,291 257,314 227,351 167,393 115,404 75,404 36,387 51,338 36,306 36,271 39,211 39,161 44,117 39,101 54,53';
+  '23,99 24,87 35,70 39,50 36,32 58,21 80,17 93,24 99,38 99,65 142,73 153,99 173,127 187,140 200,164 221,199 238,225 253,268 252,314 246,343 232,367 194,387 176,384 117,405 111,401 77,392 59,377 52,348 37,305 38,278 35,195 34,149 27,112';
 
 const RISK_ORDER = ['Severe', 'High', 'Moderate', 'Low'] as const;
 
