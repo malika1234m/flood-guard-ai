@@ -23,6 +23,7 @@ from src.llm_advisor import generate_risk_report
 
 from . import monitoring
 from .schemas import (
+    DistrictRisk,
     FeedbackRequest,
     HealthResponse,
     ModelInfo,
@@ -110,6 +111,26 @@ def predict(req: PredictRequest):
         prediction_id=prediction_id,
         latency_ms=round(latency_ms, 2),
     )
+
+
+@app.get("/district-risks", response_model=list[DistrictRisk])
+def district_risks():
+    """Score every district using its typical profile values — used by the map UI."""
+    if predictor is None:
+        raise HTTPException(status_code=503, detail="Model not loaded")
+    results = []
+    for district, profile in predictor.district_profiles.items():
+        record = {**profile, "district": district}
+        try:
+            pred = predictor.predict(record)
+            results.append(DistrictRisk(
+                district=district,
+                score=pred["flood_risk_score"],
+                category=pred["risk_category"],
+            ))
+        except Exception:
+            pass
+    return sorted(results, key=lambda r: r.district)
 
 
 @app.post("/feedback")

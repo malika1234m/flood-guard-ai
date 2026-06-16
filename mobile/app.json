@@ -25,6 +25,12 @@
     "plugins": [
       "expo-router",
       [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Allow FloodGuard AI to detect your location so it can show the flood risk for your nearest Sri Lanka district."
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "backgroundColor": "#0b1320",

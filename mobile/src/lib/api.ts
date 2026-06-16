@@ -20,6 +20,35 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 // ── Types ──────────────────────────────────────────────────────────────
 
+export interface DistrictProfile {
+  latitude: number;
+  longitude: number;
+  elevation_m: number;
+  distance_to_river_m: number;
+  population_density_per_km2: number;
+  built_up_percent: number;
+  rainfall_7d_mm: number;
+  monthly_rainfall_mm: number;
+  drainage_index: number;
+  ndvi: number;
+  ndwi: number;
+  historical_flood_count: number;
+  infrastructure_score: number;
+  nearest_hospital_km: number;
+  nearest_evac_km: number;
+  seasonal_index: number;
+  terrain_roughness_index: number;
+  socioeconomic_status_index: number;
+  extreme_weather_index: number;
+  landcover: string;
+  soil_type: string;
+  water_supply: string;
+  electricity: string;
+  road_quality: string;
+  urban_rural: string;
+  water_presence_flag: string;
+}
+
 export interface ModelInfo {
   version: string;
   trained_at: string;
@@ -31,6 +60,7 @@ export interface ModelInfo {
   categorical_options: Record<string, string[]>;
   district_defaults: Record<string, Record<string, number>>;
   advanced_field_global_defaults: Record<string, number>;
+  district_profiles: Record<string, DistrictProfile>;
 }
 
 export interface PredictRequest {
@@ -147,6 +177,16 @@ export function sendFeedback(payload: FeedbackRequest) {
 
 export function getMonitoringStats() {
   return request<MonitoringStats>('/monitoring/stats');
+}
+
+export interface DistrictRisk {
+  district: string;
+  score: number;
+  category: string;
+}
+
+export function getDistrictRisks() {
+  return request<DistrictRisk[]>('/district-risks');
 }
 
 export const BASE_MODEL_NAMES: Record<string, string> = {

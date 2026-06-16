@@ -179,6 +179,16 @@ export function getMonitoringStats() {
   return request<MonitoringStats>("/monitoring/stats");
 }
 
+export interface DistrictRisk {
+  district: string;
+  score: number;
+  category: string;
+}
+
+export function getDistrictRisks() {
+  return request<DistrictRisk[]>("/district-risks");
+}
+
 export const BASE_MODEL_NAMES: Record<string, string> = {
   lgb: "LightGBM",
   cat: "CatBoost",

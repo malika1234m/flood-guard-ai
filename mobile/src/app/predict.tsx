@@ -1,6 +1,7 @@
 import { Feather } from '@expo/vector-icons';
+import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AuroraBackground } from '@/components/ui/AuroraBackground';
@@ -173,6 +174,7 @@ function buildPayload(form: FormState): PredictRequest {
 }
 
 export default function PredictScreen() {
+  const params = useLocalSearchParams<{ district?: string }>();
   const [info, setInfo] = useState<ModelInfo | null>(null);
   const [form, setForm] = useState<FormState>(DEFAULT_FORM);
   const [result, setResult] = useState<PredictResponse | null>(null);
@@ -190,11 +192,15 @@ export default function PredictScreen() {
               next[field] = data.categorical_options[field]?.[0] ?? '';
             }
           }
+          // Pre-fill district if navigated from LiveRiskCard
+          if (params.district && data.categorical_options['district']?.includes(params.district)) {
+            next.district = params.district;
+          }
           return next;
         });
       })
       .catch(() => Alert.alert('Connection error', 'Failed to load model configuration.'));
-  }, []);
+  }, [params.district]);
 
   const set = (key: keyof FormState) => (value: string) => setForm((prev) => ({ ...prev, [key]: value }));
 
@@ -217,6 +223,18 @@ export default function PredictScreen() {
     } finally {
       setLoading(false);
     }
+  }
+
+  async function handleShare() {
+    if (!result) return;
+    await Share.share({
+      message:
+        `FloodGuard AI — Flood Risk Assessment\n\n` +
+        `District: ${form.district}\n` +
+        `Risk: ${result.risk_category} (score: ${result.flood_risk_score.toFixed(3)})\n` +
+        `${result.ai_report?.summary ?? ''}\n\n` +
+        `Assessed with FloodGuard AI · https://floodguard-production.up.railway.app`,
+    });
   }
 
   function startOver() {
@@ -450,7 +468,10 @@ export default function PredictScreen() {
         {result ? (
           <>
             <RiskResult result={result} />
-            <Button title="Start a new assessment" variant="secondary" icon="refresh-cw" onPress={startOver} />
+            <View style={styles.resultActions}>
+              <Button title="Share" variant="secondary" icon="share-2" fullWidth={false} onPress={handleShare} />
+              <Button title="New assessment" variant="secondary" icon="refresh-cw" fullWidth={false} onPress={startOver} />
+            </View>
           </>
         ) : (
           <View style={styles.placeholder}>
@@ -633,6 +654,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     gap: Spacing.three,
+  },
+
+  resultActions: {
+    flexDirection: 'row',
+    gap: Spacing.two,
+    justifyContent: 'center',
   },
 
   // Card headers

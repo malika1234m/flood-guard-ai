@@ -86,6 +86,12 @@ class FeedbackRequest(BaseModel):
     comment: Optional[str] = None
 
 
+class DistrictRisk(BaseModel):
+    district: str
+    score: float
+    category: str
+
+
 class DistrictProfile(BaseModel):
     latitude: float
     longitude: float

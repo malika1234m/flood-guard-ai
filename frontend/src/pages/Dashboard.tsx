@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { RefreshCw } from "lucide-react";
+import { SriLankaMap } from "@/components/SriLankaMap";
 import {
   Bar,
   BarChart,
@@ -232,9 +233,25 @@ export function Dashboard() {
         <ChartCard title="Risk category breakdown">
           <CategoryDonutChart counts={stats?.category_counts ?? {}} />
         </ChartCard>
-        <ChartCard title="Top districts">
-          <DistrictBarChart counts={stats?.district_counts ?? {}} />
-        </ChartCard>
+      </div>
+
+      {/* Full-width map card */}
+      <Card className="mt-4.5">
+        <CardContent className="pt-5">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8">
+            <div className="min-w-0 flex-1">
+              <SriLankaMap />
+            </div>
+            <div className="lg:w-[320px] lg:shrink-0">
+              <ChartCard title="Top districts">
+                <DistrictBarChart counts={stats?.district_counts ?? {}} />
+              </ChartCard>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="mt-4.5">
         <ChartCard title="Recent predictions">
           <div className="max-h-[280px] overflow-auto">
             <Table>

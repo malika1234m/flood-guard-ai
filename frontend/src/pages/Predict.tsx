@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { toast } from "sonner";
-import { Building2, CloudRain, Droplets, Gauge as GaugeIcon, MapPin, Satellite, SlidersHorizontal } from "lucide-react";
+import { Building2, CloudRain, Droplets, Gauge as GaugeIcon, MapPin, Satellite, Share2, SlidersHorizontal } from "lucide-react";
 import { FactorsChart } from "@/components/FactorsChart";
 import { PageHero } from "@/components/PageHero";
 import { RiskGauge } from "@/components/RiskGauge";
@@ -209,6 +209,22 @@ export function Predict() {
       toast.error(err instanceof Error ? err.message : "Prediction failed");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleShare() {
+    if (!result) return;
+    const text =
+      `FloodGuard AI — Flood Risk Assessment\n\n` +
+      `District: ${form.district}\n` +
+      `Risk: ${result.risk_category} (score: ${result.flood_risk_score.toFixed(3)})\n` +
+      (result.ai_report ? `\n${result.ai_report.summary}` : "") +
+      `\n\nAssessed at https://floodguard-production.up.railway.app/predict`;
+    if (navigator.share) {
+      await navigator.share({ title: "FloodGuard AI Risk Assessment", text });
+    } else {
+      await navigator.clipboard.writeText(text);
+      toast.success("Assessment copied to clipboard");
     }
   }
 
@@ -571,7 +587,17 @@ export function Predict() {
                 </details>
 
                 <div className="flex flex-wrap items-center gap-3.5 border-t border-border pt-3.5">
-                  <span className="text-sm">Was this helpful? Rate it:</span>
+                  <Button
+                    type="button"
+                    variant="brand-outline"
+                    size="sm"
+                    onClick={handleShare}
+                    className="gap-1.5"
+                  >
+                    <Share2 className="h-3.5 w-3.5" aria-hidden="true" />
+                    Share result
+                  </Button>
+                  <span className="text-sm text-muted-foreground">Rate it:</span>
                   <StarRating value={rating} onChange={handleRate} />
                   {feedbackSent && <span className="text-[0.85rem] text-risk-low">Thanks for your feedback!</span>}
                 </div>

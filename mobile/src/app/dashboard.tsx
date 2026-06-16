@@ -11,6 +11,7 @@ import { BrandMark } from '@/components/ui/BrandMark';
 import { Card } from '@/components/ui/Card';
 import { PulseDot } from '@/components/ui/PulseDot';
 import { SegmentedTabs } from '@/components/ui/SegmentedTabs';
+import { SriLankaMap } from '@/components/ui/SriLankaMap';
 import { StatChip } from '@/components/ui/StatChip';
 import { Colors, Fonts, Glass, Gradients, RISK_COLORS, Radius, Shadows, Spacing } from '@/constants/theme';
 import { getMonitoringStats, type MonitoringStats } from '@/lib/api';
@@ -20,8 +21,9 @@ const REFRESH_INTERVAL_MS = 15000;
 const VIEW_OPTIONS: { key: string; label: string; icon: keyof typeof Feather.glyphMap; title: string }[] = [
   { key: 'score', label: 'Trend', icon: 'bar-chart-2', title: 'Score distribution' },
   { key: 'categories', label: 'Categories', icon: 'pie-chart', title: 'Risk category breakdown' },
-  { key: 'districts', label: 'Districts', icon: 'map', title: 'Top districts' },
+  { key: 'districts', label: 'Districts', icon: 'bar-chart', title: 'Top districts' },
   { key: 'recent', label: 'Recent', icon: 'list', title: 'Recent predictions' },
+  { key: 'map', label: 'Risk Map', icon: 'map', title: 'Sri Lanka risk map' },
 ];
 
 const DONUT_SIZE = 150;
@@ -285,6 +287,7 @@ export default function DashboardScreen() {
           {view === 'categories' && <CategoryDonut counts={stats?.category_counts ?? {}} />}
           {view === 'districts' && <DistrictBars counts={stats?.district_counts ?? {}} />}
           {view === 'recent' && <RecentPredictions stats={stats} />}
+          {view === 'map' && <SriLankaMap />}
         </ChartCard>
       </ScrollView>
     </SafeAreaView>

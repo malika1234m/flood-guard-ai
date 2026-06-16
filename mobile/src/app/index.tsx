@@ -12,6 +12,7 @@ import { Card } from '@/components/ui/Card';
 import { Carousel } from '@/components/ui/Carousel';
 import { GlowDivider } from '@/components/ui/GlowDivider';
 import { GradientText } from '@/components/ui/GradientText';
+import { LiveRiskCard } from '@/components/ui/LiveRiskCard';
 import { PulseDot } from '@/components/ui/PulseDot';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { StatChip } from '@/components/ui/StatChip';
@@ -117,6 +118,16 @@ export default function HomeScreen() {
               </Text>
             </View>
           )}
+        </View>
+
+        {/* Live geolocation risk preview */}
+        <View style={styles.section}>
+          <SectionHeader
+            eyebrow="Live risk preview"
+            title="Your nearest district, right now"
+            description="Based on your current location and FloodGuard's ML models."
+          />
+          <LiveRiskCard />
         </View>
 
         {/* Why this matters */}
