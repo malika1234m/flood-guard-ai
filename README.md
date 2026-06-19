@@ -191,11 +191,11 @@ Top contributing features (by LightGBM gain): `district_te`, `inund_log1p`,
 
 ## 6. AI Risk Advisor — disclosure
 
-`src/llm_advisor.py` calls **Claude (`claude-haiku-4-5`)** via the Anthropic API
-to turn a prediction + its top contributing features into a plain-language
-summary and a list of recommended actions, returned as structured JSON.
+`src/llm_advisor.py` calls **GPT-4o-mini** via the OpenAI API to turn a
+prediction + its top contributing features into a plain-language summary and a
+list of recommended actions, returned as structured JSON.
 
-- **Requires** the `ANTHROPIC_API_KEY` environment variable.
+- **Requires** the `OPENAI_API_KEY` environment variable.
 - **If the key is not set** (e.g. a fresh clone or a demo environment without
   credentials), the advisor falls back to a **deterministic template** keyed on
   risk category — the API and UI continue to work identically, with

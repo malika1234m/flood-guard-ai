@@ -2,19 +2,18 @@
 AI Risk Advisor: turns a flood-risk prediction + its top contributing
 factors into a plain-language report with recommendations.
 
-Uses Claude (`claude-haiku-4-5`) via the `anthropic` SDK when
-`ANTHROPIC_API_KEY` is set in the environment. Falls back to a
-deterministic, rule-based template otherwise, so `/predict` always
-returns a report -- the live demo never depends on the external API
-being configured. (External resource use disclosed in README per the
-booklet's Rule 5.)
+Uses GPT-4o-mini via the `openai` SDK when `OPENAI_API_KEY` is set in
+the environment. Falls back to a deterministic, rule-based template
+otherwise, so `/predict` always returns a report -- the live demo never
+depends on the external API being configured. (External resource use
+disclosed in README per the booklet's Rule 5.)
 """
 from __future__ import annotations
 
 import json
 import os
 
-MODEL_NAME = "claude-haiku-4-5-20251001"
+MODEL_NAME = "gpt-4o-mini"
 
 # Human-readable names for the engineered/raw features that tend to show
 # up in `top_features`, used in both the LLM prompt and the template.
@@ -104,14 +103,14 @@ def _template_report(prediction: dict, contributions: list[dict]) -> dict:
 
 # ── LLM-backed report ──────────────────────────────────────────────────────
 def _llm_report(record: dict, prediction: dict, contributions: list[dict]) -> dict | None:
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    api_key = os.environ.get("OPENAI_API_KEY")
     if not api_key:
         return None
 
     try:
-        import anthropic
+        from openai import OpenAI
 
-        client = anthropic.Anthropic(api_key=api_key)
+        client = OpenAI(api_key=api_key)
         factors_text = "\n".join(f"- {_friendly(c['feature'])}: {c['value']}" for c in contributions)
         prompt = (
             "You are a flood-risk advisor for locations in Sri Lanka. A predictive model "
@@ -128,16 +127,13 @@ def _llm_report(record: dict, prediction: dict, contributions: list[dict]) -> di
             'authority, no model/statistics jargon>", "recommendations": ["<short actionable '
             'recommendation>", ...4 items total]}'
         )
-        resp = client.messages.create(
+        resp = client.chat.completions.create(
             model=MODEL_NAME,
             max_tokens=600,
+            response_format={"type": "json_object"},
             messages=[{"role": "user", "content": prompt}],
         )
-        text = resp.content[0].text.strip()
-        if text.startswith("```"):
-            text = text.strip("`")
-            if text.lower().startswith("json"):
-                text = text[4:]
+        text = resp.choices[0].message.content.strip()
         data = json.loads(text)
         recs = list(data["recommendations"])[:5]
         if not recs:
