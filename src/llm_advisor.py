@@ -139,7 +139,9 @@ def _llm_report(record: dict, prediction: dict, contributions: list[dict]) -> di
         if not recs:
             return None
         return {"summary": str(data["summary"]), "recommendations": recs, "source": "llm"}
-    except Exception:
+    except Exception as _exc:
+        import sys
+        print(f"[llm_advisor] OpenAI call failed: {_exc!r}", file=sys.stderr, flush=True)
         return None
 
 
