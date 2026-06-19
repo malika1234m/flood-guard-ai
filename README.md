@@ -323,13 +323,13 @@ npx expo start --web  # run in the browser
 
 ## 11. Team
 
-**Team Name:** _[Add team name]_
+**Team Name:** API4
 
-| Member | Role |
-|---|---|
-| _[Add name]_ | ML / Feature Engineering |
-| _[Add name]_ | MLOps / Deployment |
-| _[Add name]_ | Frontend / AI Advisor |
-| _[Add name]_ | Presentation |
+| Member |
+|---|
+| Gehiru Damnidu |
+| Nimsith Senevirathna |
+| Senash Adeesha |
+| T.G. Malika Nishnatha |
 
 _Submission for **ML Opsidian: Genesis — Final Round**._
