@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>FloodGuard AI — Viva Preparation Guide</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --blue:    #1d6fe8;
+    --blue-lt: #e8f1fd;
+    --green:   #16a34a;
+    --green-lt:#dcfce7;
+    --amber:   #d97706;
+    --amber-lt:#fef3c7;
+    --red:     #dc2626;
+    --red-lt:  #fee2e2;
+    --gray-900:#0f172a;
+    --gray-700:#334155;
+    --gray-500:#64748b;
+    --gray-200:#e2e8f0;
+    --gray-100:#f1f5f9;
+    --gray-50: #f8fafc;
+  }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    font-size: 10.5pt;
+    line-height: 1.65;
+    color: var(--gray-900);
+    background: white;
+    padding: 0;
+  }
+
+  /* ── Cover page ── */
+  .cover {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 60%, #0f172a 100%);
+    color: white;
+    text-align: center;
+    padding: 60px 40px;
+    page-break-after: always;
+    position: relative;
+    overflow: hidden;
+  }
+  .cover::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse 70% 50% at 50% 40%, rgba(56,189,248,0.12) 0%, transparent 70%);
+  }
+  .cover-badge {
+    position: relative;
+    font-size: 9pt;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: #38bdf8;
+    margin-bottom: 28px;
+    border: 1px solid rgba(56,189,248,0.35);
+    padding: 6px 20px;
+    border-radius: 20px;
+  }
+  .cover h1 {
+    position: relative;
+    font-size: 34pt;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: #e6edf6;
+    margin-bottom: 10px;
+    line-height: 1.1;
+  }
+  .cover h1 span { color: #38bdf8; }
+  .cover .subtitle {
+    position: relative;
+    font-size: 13pt;
+    color: rgba(147,164,191,0.9);
+    margin-bottom: 48px;
+    font-weight: 400;
+  }
+  .cover-meta {
+    position: relative;
+    display: flex;
+    gap: 32px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 56px;
+  }
+  .cover-meta-item { text-align: center; }
+  .cover-meta-item .label { font-size: 8pt; color: #64748b; letter-spacing: 0.1em; text-transform: uppercase; }
+  .cover-meta-item .value { font-size: 11pt; font-weight: 600; color: #cbd5e1; margin-top: 2px; }
+  .cover-tip {
+    position: relative;
+    font-size: 9pt;
+    color: rgba(147,164,191,0.65);
+    border-top: 1px solid rgba(255,255,255,0.08);
+    padding-top: 20px;
+  }
+
+  /* ── Page layout ── */
+  .page { padding: 42px 52px; }
+
+  /* ── Section headings ── */
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 22px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid var(--gray-200);
+    page-break-after: avoid;
+  }
+  .section-number {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    background: var(--blue);
+    color: white;
+    font-weight: 800;
+    font-size: 13pt;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .section-title-block h2 {
+    font-size: 14pt;
+    font-weight: 700;
+    color: var(--gray-900);
+    line-height: 1.2;
+  }
+  .section-title-block .weight {
+    font-size: 9pt;
+    color: var(--blue);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+  }
+
+  /* ── Cards ── */
+  .card {
+    border: 1px solid var(--gray-200);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 18px;
+    page-break-inside: avoid;
+  }
+  .card-header {
+    background: var(--gray-50);
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--gray-200);
+  }
+  .card-header .title {
+    font-weight: 700;
+    font-size: 10.5pt;
+    color: var(--gray-900);
+  }
+  .badge {
+    font-size: 8pt;
+    font-weight: 600;
+    padding: 3px 9px;
+    border-radius: 12px;
+    letter-spacing: 0.04em;
+  }
+  .badge-green  { background: var(--green-lt); color: var(--green); }
+  .badge-amber  { background: var(--amber-lt); color: var(--amber); }
+  .badge-blue   { background: var(--blue-lt);  color: var(--blue);  }
+  .card-body { padding: 14px 16px; }
+
+  /* ── Q&A blocks ── */
+  .qa { margin-bottom: 14px; }
+  .question {
+    font-weight: 600;
+    color: var(--blue);
+    font-size: 10pt;
+    margin-bottom: 5px;
+    display: flex;
+    align-items: flex-start;
+    gap: 7px;
+  }
+  .question::before { content: 'Q'; background: var(--blue); color: white; font-size: 8pt; font-weight: 700; padding: 1px 5px; border-radius: 4px; flex-shrink: 0; margin-top: 1px; }
+  .answer {
+    padding-left: 22px;
+    color: var(--gray-700);
+    font-size: 10pt;
+  }
+  .answer em { font-style: normal; color: var(--gray-900); font-weight: 600; }
+
+  /* ── Code / data snippets ── */
+  .snippet {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8.5pt;
+    background: var(--gray-100);
+    border: 1px solid var(--gray-200);
+    border-radius: 6px;
+    padding: 10px 14px;
+    margin: 8px 0;
+    color: var(--gray-700);
+    line-height: 1.6;
+    white-space: pre-wrap;
+    page-break-inside: avoid;
+  }
+  .snippet .kw { color: #7c3aed; font-weight: 600; }
+  .snippet .val { color: var(--green); }
+  .snippet .cmt { color: var(--gray-500); font-style: italic; }
+
+  /* ── Flow diagram ── */
+  .flow {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 10px 0;
+  }
+  .flow-box {
+    background: var(--blue-lt);
+    border: 1px solid #bfdbfe;
+    border-radius: 6px;
+    padding: 5px 10px;
+    font-size: 9pt;
+    font-weight: 600;
+    color: var(--blue);
+    white-space: nowrap;
+  }
+  .flow-arrow { color: var(--gray-500); font-size: 13pt; font-weight: 300; }
+
+  /* ── Bullet lists ── */
+  ul.bullets { padding-left: 20px; margin: 6px 0; }
+  ul.bullets li { margin-bottom: 5px; color: var(--gray-700); font-size: 10pt; }
+  ul.bullets li strong { color: var(--gray-900); }
+
+  /* ── Highlight box ── */
+  .highlight {
+    border-left: 4px solid var(--blue);
+    background: var(--blue-lt);
+    border-radius: 0 8px 8px 0;
+    padding: 10px 14px;
+    margin: 10px 0;
+    font-size: 10pt;
+    color: var(--gray-700);
+    page-break-inside: avoid;
+  }
+  .highlight.green  { border-left-color: var(--green); background: var(--green-lt); }
+  .highlight.amber  { border-left-color: var(--amber); background: var(--amber-lt); }
+
+  /* ── Stats table ── */
+  .stats-table { width: 100%; border-collapse: collapse; font-size: 9.5pt; margin: 10px 0; }
+  .stats-table th { background: var(--gray-100); padding: 7px 10px; text-align: left; font-weight: 700; font-size: 8.5pt; color: var(--gray-500); text-transform: uppercase; letter-spacing: 0.06em; border-bottom: 2px solid var(--gray-200); }
+  .stats-table td { padding: 7px 10px; border-bottom: 1px solid var(--gray-100); color: var(--gray-700); }
+  .stats-table tr:last-child td { border-bottom: none; }
+  .stats-table td:first-child { font-weight: 600; color: var(--gray-900); }
+
+  /* ── Summary scorecard ── */
+  .scorecard {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+    margin: 20px 0;
+  }
+  .score-item {
+    text-align: center;
+    background: var(--gray-50);
+    border: 1px solid var(--gray-200);
+    border-radius: 10px;
+    padding: 14px 8px;
+    page-break-inside: avoid;
+  }
+  .score-item .pct { font-size: 18pt; font-weight: 800; color: var(--blue); }
+  .score-item .name { font-size: 8pt; color: var(--gray-500); font-weight: 500; margin-top: 3px; text-align: center; line-height: 1.3; }
+  .score-item .status { font-size: 9pt; margin-top: 6px; }
+
+  /* ── Page break helpers ── */
+  .pb { page-break-before: always; }
+  .no-break { page-break-inside: avoid; }
+
+  /* ── Two-column ── */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+  /* ── Footer ── */
+  @media print {
+    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    @page { margin: 0; size: A4; }
+    .cover { min-height: 100vh; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════════
+     COVER PAGE
+═══════════════════════════════════════════════════════════════ -->
+<div class="cover">
+  <div class="cover-badge">ML Opsidian: Genesis — Final Round</div>
+  <h1>FloodGuard <span>AI</span></h1>
+  <p class="subtitle">Viva Preparation Guide — Team API4</p>
+  <div class="cover-meta">
+    <div class="cover-meta-item">
+      <div class="label">Team</div>
+      <div class="value">API4</div>
+    </div>
+    <div class="cover-meta-item">
+      <div class="label">Members</div>
+      <div class="value">Gehiru · Nimsith · Senash · Malika</div>
+    </div>
+    <div class="cover-meta-item">
+      <div class="label">Live Demo</div>
+      <div class="value">floodguard-production.up.railway.app</div>
+    </div>
+  </div>
+  <p class="cover-tip">Open in Chrome → Cmd+P → Save as PDF to export</p>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     PAGE 2 — HOW TO USE THIS GUIDE + PIPELINE OVERVIEW
+═══════════════════════════════════════════════════════════════ -->
+<div class="page">
+
+  <div class="section-header">
+    <div class="section-number" style="background:#334155">★</div>
+    <div class="section-title-block">
+      <h2>How to Use This Guide</h2>
+      <div class="weight">Read this before your viva</div>
+    </div>
+  </div>
+
+  <div class="highlight green">
+    <strong>Golden rule:</strong> Don't just say what the system does — explain <em>why</em> you made each decision. Judges are testing your engineering judgement, not your ability to memorise code.
+  </div>
+
+  <div class="card" style="margin-top:18px">
+    <div class="card-header"><span class="title">End-to-end system pipeline — memorise this flow</span></div>
+    <div class="card-body">
+      <div class="flow">
+        <div class="flow-box">Raw Input<br/>(25 fields)</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-box">data_validation.py<br/>Schema + OOD checks</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-box">features.py<br/>223 engineered features</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-box">LightGBM<br/>CatBoost / XGBoost<br/>(5-fold OOF)</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-box">Ridge Meta-stack<br/>learned blend weights</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-box">Calibration<br/>shift</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-box">Score 0–1<br/>+ Category</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-box">GPT-4o-mini<br/>AI Report</div>
+      </div>
+      <p style="font-size:9pt;color:var(--gray-500);margin-top:8px">Every prediction is also logged to SQLite for the monitoring dashboard. OOD flags are returned if inputs fall outside training data ranges.</p>
+    </div>
+  </div>
+
+  <div class="two-col">
+    <div class="card">
+      <div class="card-header"><span class="title">Key numbers to remember</span></div>
+      <div class="card-body">
+        <table class="stats-table">
+          <tr><td>Training rows</td><td>20,886</td></tr>
+          <tr><td>Engineered features</td><td>223</td></tr>
+          <tr><td>CV folds</td><td>5</td></tr>
+          <tr><td>Base models</td><td>LightGBM, CatBoost, XGBoost</td></tr>
+          <tr><td>Meta-learner</td><td>Ridge (non-negative weights)</td></tr>
+          <tr><td>OOF custom metric</td><td>0.4071 (calibrated)</td></tr>
+          <tr><td>Training time</td><td>~45 seconds</td></tr>
+          <tr><td>Inference latency</td><td>&lt; 50 ms per record</td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><span class="title">Ridge meta-stack weights</span></div>
+      <div class="card-body">
+        <table class="stats-table">
+          <tr><td>CatBoost</td><td><strong style="color:var(--green)">0.713</strong> (dominant)</td></tr>
+          <tr><td>LightGBM</td><td>0.229</td></tr>
+          <tr><td>XGBoost</td><td>0.134</td></tr>
+        </table>
+        <div class="highlight" style="margin-top:10px">
+          <strong>Why CatBoost dominates?</strong> It handles the many categorical features (district, landcover, soil_type, etc.) natively with ordered target statistics — no label encoding needed, less overfitting.
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     PAGE 3 — CRITERION 1
+═══════════════════════════════════════════════════════════════ -->
+<div class="page pb">
+
+  <div class="section-header">
+    <div class="section-number">1</div>
+    <div class="section-title-block">
+      <h2>Scenario Understanding &amp; Solution Design</h2>
+      <div class="weight">20% of total score</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="title">Problem Interpretation</span>
+      <span class="badge badge-green">Full marks expected</span>
+    </div>
+    <div class="card-body">
+      <div class="qa">
+        <div class="question">How did you understand the problem?</div>
+        <div class="answer">
+          The task is to predict a <em>continuous flood risk score (0–1)</em> for Sri Lankan locations and deploy it as a production service. The custom metric is <em>0.5·MAE + 0.5·RMSE × (1 + max(0, 1−EV))</em> — it penalises both error magnitude and unexplained variance equally, which pushed us to balance accuracy with prediction coverage. We implemented the exact metric in <code>src/train.py</code> so every evaluation run uses the same formula as the leaderboard.
+        </div>
+      </div>
+      <div class="qa">
+        <div class="question">What were the key constraints?</div>
+        <div class="answer">
+          Three constraints shaped every decision: (1) <em>Real-time inference</em> — a deployed API must score a single new record in milliseconds, ruling out pseudo-labeling or multi-seed ensembles that need the full test set. (2) <em>Reproducibility</em> — the same model must retrain from scratch and produce consistent artifacts. (3) <em>Production reliability</em> — the service must keep working even without an external API key (LLM falls back to a template).
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="title">Solution Strategy &amp; Design Alignment</span>
+      <span class="badge badge-green">Full marks expected</span>
+    </div>
+    <div class="card-body">
+      <div class="qa">
+        <div class="question">How did you design the solution to match the problem?</div>
+        <div class="answer">
+          We separated the system into three clean layers: <em>offline training</em> (produces versioned model artifacts), <em>online inference</em> (loads those artifacts and scores single records), and <em>monitoring</em> (logs every prediction and surfaces drift). This architecture means we can retrain the model without changing the API, and we can upgrade the API without retraining.
+        </div>
+      </div>
+      <div class="qa">
+        <div class="question">Why an ensemble rather than a single model?</div>
+        <div class="answer">
+          Each model captures different signal: <em>LightGBM</em> is fast and good on dense numeric features, <em>CatBoost</em> handles categoricals natively (district, landcover, soil type) without label encoding, <em>XGBoost</em> adds a third independent learner. The Ridge meta-stack then learns the optimal combination from out-of-fold predictions — if one model overfits a fold, the others compensate.
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     PAGE 4 — CRITERION 2
+═══════════════════════════════════════════════════════════════ -->
+<div class="page pb">
+
+  <div class="section-header">
+    <div class="section-number">2</div>
+    <div class="section-title-block">
+      <h2>Technical Implementation</h2>
+      <div class="weight">30% of total score — highest weight</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="title">Model Engineering — Feature Pipeline</span>
+      <span class="badge badge-green">Strong</span>
+    </div>
+    <div class="card-body">
+      <div class="qa">
+        <div class="question">Explain your feature engineering.</div>
+        <div class="answer">
+          We build <em>223 features</em> from 25 raw inputs using a <code>FeatureEngineer</code> class in <code>src/features.py</code> that can be fit on training data and then applied to any single new record:
+        </div>
+      </div>
+      <table class="stats-table" style="margin-top:6px">
+        <thead><tr><th>Feature group</th><th>Examples</th><th>Why useful</th></tr></thead>
+        <tbody>
+          <tr><td>Date / seasonal</td><td>month, season_sin/cos, monsoon_flag</td><td>Flood risk is cyclical — monsoon peaks matter</td></tr>
+          <tr><td>Geo features</td><td>haversine distances to coast, rivers, Colombo</td><td>Proximity to water bodies is the strongest predictor</td></tr>
+          <tr><td>District statistics</td><td>district_te, district_risk_rank</td><td>Historical district-level risk is highly predictive</td></tr>
+          <tr><td>KMeans clusters</td><td>k=5, 10, 20 cluster assignments</td><td>Captures geographic micro-zones of similar risk</td></tr>
+          <tr><td>KNN target stats</td><td>5-NN mean/std of flood risk via BallTree</td><td>Spatial interpolation from nearby training points</td></tr>
+          <tr><td>Interaction features</td><td>extreme_x_terrain, ndvi×ndwi</td><td>Combined risk amplifiers the base features miss</td></tr>
+          <tr><td>Quantile mappings</td><td>ndvi_qmap, ndwi_qmap</td><td>Empirical monotonic transforms reduce skew</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="title">Evaluation Methods</span>
+      <span class="badge badge-green">Strong</span>
+    </div>
+    <div class="card-body">
+      <div class="qa">
+        <div class="question">How did you validate the model?</div>
+        <div class="answer">
+          <em>5-fold cross-validation</em> with out-of-fold (OOF) predictions. The Ridge meta-learner is trained on OOF scores — not on re-predictions from the full training data — which prevents leakage. We track per-fold metrics and the OOF aggregate in MLflow so we can compare runs. The calibration shift is also computed on OOF predictions to avoid inflating performance.
+        </div>
+      </div>
+      <div class="snippet"><span class="cmt"># Custom metric — implemented exactly as the leaderboard formula</span>
+<span class="kw">def</span> custom_metric(y_true, y_pred):
+    mae  = mean_absolute_error(y_true, y_pred)
+    rmse = sqrt(mean((y_true - y_pred)**2))
+    ev   = explained_variance_score(y_true, y_pred)
+    <span class="kw">return</span> <span class="val">0.5 * mae + 0.5 * rmse * (1 + max(0.0, 1.0 - ev))</span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="title">Code Quality</span>
+      <span class="badge badge-green">Strong</span>
+    </div>
+    <div class="card-body">
+      <ul class="bullets">
+        <li><strong>Modular structure:</strong> config.py / data_validation.py / features.py / train.py / inference.py — each file has one clear responsibility.</li>
+        <li><strong>Test suite:</strong> 3 pytest files covering features, inference, and the API. Run with a single <code>pytest -v</code> command.</li>
+        <li><strong>Type-annotated:</strong> Pydantic schemas for all API request/response models, mypy-friendly source files.</li>
+        <li><strong>No global state:</strong> <code>FeatureEngineer</code> is a fit/transform object; <code>FloodRiskPredictor</code> is a loadable class. Both are stateless at inference time.</li>
+      </ul>
+    </div>
+  </div>
+
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     PAGE 5 — CRITERION 3
+═══════════════════════════════════════════════════════════════ -->
+<div class="page pb">
+
+  <div class="section-header">
+    <div class="section-number">3</div>
+    <div class="section-title-block">
+      <h2>MLOps &amp; Production Readiness</h2>
+      <div class="weight">25% of total score</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="title">Deployment Approach</span>
+      <span class="badge badge-green">Full</span>
+    </div>
+    <div class="card-body">
+      <div class="qa">
+        <div class="question">How did you deploy the system?</div>
+        <div class="answer">
+          <em>Single Docker image</em> using a multi-stage build: Stage 1 (Node 22) compiles the React frontend; Stage 2 (Python 3.11-slim) installs the ML dependencies and copies the trained model artifacts. The FastAPI app serves both the REST API and the pre-built frontend static files from one process. This means one image, one URL, one deployment command.
+        </div>
+      </div>
+      <div class="snippet"><span class="cmt"># Multi-stage Dockerfile (simplified)</span>
+FROM node:22-slim AS frontend-build
+RUN npm ci && npm run build          <span class="cmt"># produces frontend/dist/</span>
+
+FROM python:3.11-slim
+COPY requirements-app.txt .
+RUN pip install -r requirements-app.txt
+COPY src/ app/ models/ .
+COPY --from=frontend-build /app/frontend/dist/ frontend/dist/
+CMD uvicorn app.main:app --host 0.0.0.0 --port $PORT</div>
+      <div class="highlight" style="margin-top:10px">
+        Live at: <strong>https://floodguard-production.up.railway.app</strong> — the same URL serves the web UI, the API (<code>/predict</code>, <code>/health</code>), and the monitoring dashboard (<code>/dashboard</code>).
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="title">Automation — CI/CD &amp; MLflow</span>
+      <span class="badge badge-green">Full</span>
+    </div>
+    <div class="card-body">
+      <div class="qa">
+        <div class="question">What automation did you put in place?</div>
+        <div class="answer">
+          <em>GitHub Actions CI</em> runs on every push to master: installs dependencies, runs the full pytest suite, then builds the Docker image. If tests fail, the Docker build is blocked. This catches regressions before they reach production.
+        </div>
+      </div>
+      <div class="qa">
+        <div class="question">How do you track model experiments?</div>
+        <div class="answer">
+          <em>MLflow</em> (local file store in <code>mlruns/</code>) logs every training run: hyperparameters for all three models, per-fold custom metric, OOF aggregate metric, calibration shift, and the <code>metadata.json</code> artifact. You can inspect all runs with <code>mlflow ui --backend-store-uri ./mlruns</code>.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="title">Monitoring &amp; Reliability</span>
+      <span class="badge badge-green">Full</span>
+    </div>
+    <div class="card-body">
+      <div class="qa">
+        <div class="question">How do you monitor the live system?</div>
+        <div class="answer">
+          Every <code>/predict</code> call is logged to SQLite (<code>monitoring.db</code>): raw inputs, flood risk score, risk category, model version, latency in ms, and OOD flag count. The <code>/dashboard</code> page visualises prediction volume over time, score distribution, risk-category breakdown, top districts, and average latency. A separate <code>/feedback</code> endpoint lets users report whether flooding actually occurred.
+        </div>
+      </div>
+      <div class="qa">
+        <div class="question">How do you handle out-of-distribution inputs?</div>
+        <div class="answer">
+          <code>src/data_validation.py</code> computes training-data ranges at fit time and checks each inference request against them. Any field outside the expected range raises an OOD flag, which is returned in the API response and logged. The UI shows these flags to the user as a warning — the prediction still runs, but the user is told to treat it with caution.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="title">Scalability Considerations</span>
+      <span class="badge badge-amber">Acknowledge honestly</span>
+    </div>
+    <div class="card-body">
+      <div class="highlight amber">
+        <strong>Be proactive about this:</strong> If judges ask about scalability, acknowledge SQLite honestly and explain the upgrade path. Don't wait to be caught.
+      </div>
+      <div class="qa">
+        <div class="question">What are the scalability limits of your current system?</div>
+        <div class="answer">
+          The <em>FastAPI service itself is stateless</em> and horizontally scalable — you could run 10 replicas behind a load balancer with no code changes. The current bottleneck is <em>SQLite for monitoring</em>, which supports only one writer at a time. For production at scale, we'd replace it with PostgreSQL (a single config change since we use raw SQL through Python's DB-API). The ML inference itself is well under 50 ms per request, well within any real-world SLA.
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     PAGE 6 — CRITERION 4
+═══════════════════════════════════════════════════════════════ -->
+<div class="page pb">
+
+  <div class="section-header">
+    <div class="section-number">4</div>
+    <div class="section-title-block">
+      <h2>Innovation &amp; Problem Solving</h2>
+      <div class="weight">10% of total score</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="title">Creative Features Beyond the Baseline</span>
+      <span class="badge badge-green">Strong</span>
+    </div>
+    <div class="card-body">
+      <ul class="bullets">
+        <li><strong>AI-generated risk reports (GPT-4o-mini):</strong> Every prediction includes a plain-language summary and 4–5 concrete recommendations written by GPT-4o-mini. If the API key is unavailable, a deterministic template kicks in automatically — the system never fails because of an external dependency.</li>
+        <li><strong>Live weather integration (Open-Meteo):</strong> The <code>/live-risks</code> endpoint fetches real 7-day rainfall for every district from the Open-Meteo free API and re-scores each district with live data, showing how current weather shifts flood risk above or below the typical baseline.</li>
+        <li><strong>Flood alerts system (<code>/alerts</code>):</strong> Districts where live rainfall has elevated risk to High or Severe are surfaced as active alerts — a safety-oriented feature that goes beyond pure prediction.</li>
+        <li><strong>Mobile app (React Native / Expo):</strong> A full iOS/Android app mirrors the web frontend — Predict form, AI report, monitoring dashboard — connecting to the same live backend.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="title">Engineering Trade-offs — the strongest innovation story</span>
+      <span class="badge badge-green">Very strong</span>
+    </div>
+    <div class="card-body">
+      <div class="qa">
+        <div class="question">What was the most important engineering decision you made?</div>
+        <div class="answer">
+          The biggest trade-off was <em>research-prototype vs. production-deployable model</em>. Our Initial Round solution (<code>solution_v10.py</code>) scored ~0.383 on the leaderboard using 5 models, 10-fold × 3-seed CV, pseudo-labeling, and mean calibration — but it required the entire test set to be available at once and took several minutes to run. That architecture is impossible to deploy as a live API.
+          <br/><br/>
+          For FloodGuard AI we deliberately <em>reduced complexity</em>: 3 models, 5-fold CV, fixed hyperparameters, no pseudo-labeling. We kept the ideas that survived productionisation (ensemble + Ridge meta-stack + calibration) and dropped the ones that didn't (pseudo-labeling, multi-seed search). The result trains in 45 seconds and scores any single new record in under 50 ms.
+        </div>
+      </div>
+      <div class="highlight green">
+        <strong>Key phrase for the viva:</strong> "We consciously traded 2–3 points of accuracy for a 100× faster inference pipeline that can actually serve a real user. A deployed model that works is worth more than a research model that can't be productionised."
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="title">Synthetic lat/lon insight</span>
+      <span class="badge badge-blue">Good debugging story</span>
+    </div>
+    <div class="card-body">
+      <div class="qa">
+        <div class="question">Did you find any data quality issues?</div>
+        <div class="answer">
+          Yes — we discovered that the latitude and longitude columns in <code>train.csv</code> are <em>randomly generated and uncorrelated with district</em>. A model that naively trusted them would learn random noise. Our fix: we replaced them with <em>hardcoded real district centroids</em> in the feature pipeline (e.g. Colombo → 6.93°N, 79.85°E). This gave the model meaningful geographic signal and improved OOF performance.
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     PAGE 7 — CRITERION 5 (VIVA)
+═══════════════════════════════════════════════════════════════ -->
+<div class="page pb">
+
+  <div class="section-header">
+    <div class="section-number">5</div>
+    <div class="section-title-block">
+      <h2>Viva Evaluation</h2>
+      <div class="weight">15% of total score</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="title">Tough questions you must be ready for</span>
+      <span class="badge badge-amber">Practice these out loud</span>
+    </div>
+    <div class="card-body">
+
+      <div class="qa">
+        <div class="question">Why did you use three models instead of one? Isn't that overkill?</div>
+        <div class="answer">
+          Each model has a different inductive bias. LightGBM excels on dense numeric features with leaf-wise growth. CatBoost handles categoricals natively without label encoding. XGBoost provides a third independent perspective. Their errors are partially uncorrelated, so blending them via Ridge reduces variance. The cost is ~3× training time, but training takes only 45 seconds — a cheap price for a measurable improvement.
+        </div>
+      </div>
+
+      <div class="qa">
+        <div class="question">What is Ridge meta-stacking and why not just average the predictions?</div>
+        <div class="answer">
+          Simple averaging assumes all models are equally good. Ridge regression on OOF predictions <em>learns</em> the optimal weights from data — and it found that CatBoost (0.713) is far more reliable than XGBoost (0.134) on this dataset. A simple average would have over-weighted the weaker model and hurt performance.
+        </div>
+      </div>
+
+      <div class="qa">
+        <div class="question">What does "out-of-fold" mean and why does it matter?</div>
+        <div class="answer">
+          In 5-fold CV, each training example is predicted once by a model that was trained on the <em>other four folds</em> — so it never saw that example during training. These OOF predictions are unbiased estimates of how the model generalises. We train the Ridge meta-learner on these OOF scores, not on re-predictions from the full data, which would cause target leakage and inflate performance.
+        </div>
+      </div>
+
+      <div class="qa">
+        <div class="question">What would you do differently if you had more time?</div>
+        <div class="answer">
+          Three things: (1) Add the pseudo-labeling pass from our Initial Round solution — it consistently improved leaderboard scores by ~0.01. (2) Replace SQLite with PostgreSQL for production-grade monitoring. (3) Add automated retraining: a scheduled job that retrains the model when the monitoring dashboard detects significant score distribution drift.
+        </div>
+      </div>
+
+      <div class="qa">
+        <div class="question">Your model scores 0.41 on OOF. How close is that to the best submission?</div>
+        <div class="answer">
+          The best leaderboard score was approximately 0.383. Our OOF metric of 0.4071 is on the full training set without pseudo-labeling or multi-seed ensembling — the gap is expected. More importantly, the goal of FloodGuard AI was to produce a <em>deployable service</em>, not to maximise leaderboard score at the cost of serving capability.
+        </div>
+      </div>
+
+      <div class="qa">
+        <div class="question">How does your monitoring detect model drift?</div>
+        <div class="answer">
+          Currently we log prediction score distributions and latency over time. The dashboard shows the score histogram across all recent predictions — if the distribution shifts significantly (e.g. far more High/Severe predictions than usual), that's a signal of input distribution shift. A production next step would be a statistical test (KS-test on score distributions) that triggers an alert automatically.
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     PAGE 8 — DEBUGGING STORIES + SUMMARY
+═══════════════════════════════════════════════════════════════ -->
+<div class="page pb">
+
+  <div class="section-header">
+    <div class="section-number" style="background:#7c3aed">🔧</div>
+    <div class="section-title-block">
+      <h2>Real Debugging Stories</h2>
+      <div class="weight">Use these to demonstrate debugging insight in Criterion 5</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="title">Bug 1 — AI report not working in production</span><span class="badge badge-green">Solved</span></div>
+    <div class="card-body">
+      <ul class="bullets">
+        <li><strong>Symptom:</strong> API kept returning <code>"source": "template"</code> instead of <code>"source": "llm"</code>, even with the OpenAI key set.</li>
+        <li><strong>Investigation:</strong> Added a temporary <code>print(f"LLM error: {exc}")</code> to the exception handler and deployed. Railway logs immediately showed: <code>TypeError: Client.__init__() got an unexpected keyword argument 'proxies'</code>.</li>
+        <li><strong>Root cause:</strong> <code>openai==1.51.0</code> internally passes <code>proxies=</code> to <code>httpx.Client()</code>, but Docker's pip pulled <code>httpx>=0.28</code> which removed that parameter.</li>
+        <li><strong>Fix:</strong> Upgraded to <code>openai==1.57.0</code> and pinned <code>httpx&lt;0.28</code> in <code>requirements-app.txt</code>.</li>
+        <li><strong>Lesson:</strong> Never silence exceptions completely in production code — always log at minimum the exception type so you can diagnose remotely.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="title">Bug 2 — CI failing on static files mount</span><span class="badge badge-green">Solved</span></div>
+    <div class="card-body">
+      <ul class="bullets">
+        <li><strong>Symptom:</strong> GitHub Actions test job failed with <code>RuntimeError: Directory 'frontend/dist/assets' does not exist</code>.</li>
+        <li><strong>Root cause:</strong> <code>app.mount("/assets", StaticFiles(...))</code> ran at module import time. In CI, npm hasn't built the frontend, so the directory doesn't exist when pytest imports <code>app.main</code>.</li>
+        <li><strong>Fix:</strong> Wrapped the mount in <code>if (FRONTEND_DIST / "assets").exists():</code> — mount only happens when the build exists.</li>
+        <li><strong>Lesson:</strong> Code that runs at import time must be safe to execute in all environments (test, Docker, dev), not just the production container.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="title">Bug 3 — Synthetic lat/lon in training data</span><span class="badge badge-green">Solved</span></div>
+    <div class="card-body">
+      <ul class="bullets">
+        <li><strong>Discovery:</strong> Noticed that lat/lon values were uncorrelated with district — two records in Colombo could have completely different coordinates hundreds of km apart.</li>
+        <li><strong>Impact:</strong> Any model feature using raw lat/lon (KNN lookups, haversine distances) would learn random noise instead of genuine geography.</li>
+        <li><strong>Fix:</strong> Replaced raw lat/lon with hardcoded real district centroids in the FeatureEngineer. Features like distance-to-coast and haversine-KNN now use geographically correct coordinates.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Final scorecard -->
+  <div style="margin-top:24px">
+    <div class="section-header">
+      <div class="section-number" style="background:#16a34a">✓</div>
+      <div class="section-title-block">
+        <h2>Readiness Summary</h2>
+        <div class="weight">FloodGuard AI — Team API4</div>
+      </div>
+    </div>
+    <div class="scorecard">
+      <div class="score-item">
+        <div class="pct">20%</div>
+        <div class="name">Scenario Understanding</div>
+        <div class="status">✅</div>
+      </div>
+      <div class="score-item">
+        <div class="pct">30%</div>
+        <div class="name">Technical Implementation</div>
+        <div class="status">✅</div>
+      </div>
+      <div class="score-item">
+        <div class="pct">25%</div>
+        <div class="name">MLOps &amp; Production</div>
+        <div class="status">✅</div>
+      </div>
+      <div class="score-item">
+        <div class="pct">10%</div>
+        <div class="name">Innovation</div>
+        <div class="status">✅</div>
+      </div>
+      <div class="score-item">
+        <div class="pct">15%</div>
+        <div class="name">Viva</div>
+        <div class="status">📖</div>
+      </div>
+    </div>
+    <div class="highlight green">
+      <strong>Final tip:</strong> Open the live demo at <strong>floodguard-production.up.railway.app</strong> on your laptop before the viva. Submit a prediction live, show the AI report, then navigate to the dashboard. Seeing it run in real-time is worth more than any slide.
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

@@ -141,6 +141,70 @@ class HealthResponse(BaseModel):
     model_loaded: bool
 
 
+# ── Batch predict ─────────────────────────────────────────────────────────────
+
+class BatchPredictRequest(BaseModel):
+    records: list[PredictRequest]
+    include_ai_report: bool = False
+
+
+class BatchPredictResponse(BaseModel):
+    results: list[PredictResponse]
+    total: int
+    avg_score: float
+
+
+# ── 10-day forecast ───────────────────────────────────────────────────────────
+
+class ForecastDay(BaseModel):
+    date: str
+    day_index: int
+    rainfall_mm: float
+    cumulative_7d_mm: float
+    flood_risk_score: float
+    risk_category: str
+
+
+class DistrictForecast(BaseModel):
+    district: str
+    forecast_days: list[ForecastDay]
+    peak_risk_day: int
+    peak_risk_score: float
+    avg_risk_score: float
+    trend: str              # "Worsening" | "Improving" | "Stable"
+    typical_score: float    # baseline score without forecast rainfall
+
+
+# ── Emergency priority ────────────────────────────────────────────────────────
+
+class EmergencyPriorityItem(BaseModel):
+    rank: int
+    district: str
+    priority_score: float
+    flood_risk_score: float
+    risk_category: str
+    population_score: float
+    evacuation_gap_score: float
+    flood_history_score: float
+    infrastructure_weakness_score: float
+    recommended_action: str
+    reasons: list[str]
+
+
+# ── Readiness ─────────────────────────────────────────────────────────────────
+
+class ReadinessCheck(BaseModel):
+    name: str
+    status: str         # "ok" | "failed" | "skipped"
+    detail: Optional[str] = None
+
+
+class ReadinessResponse(BaseModel):
+    overall: str        # "ok" | "degraded" | "down"
+    checks: list[ReadinessCheck]
+    model_version: str
+
+
 class LiveDistrictRisk(BaseModel):
     district: str
     live_score: float

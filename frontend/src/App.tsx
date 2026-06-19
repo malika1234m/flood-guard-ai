@@ -3,6 +3,8 @@ import { Route, Routes } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
 import { Home } from "@/pages/Home";
 import { Predict } from "@/pages/Predict";
+import { Forecast } from "@/pages/Forecast";
+import { Priority } from "@/pages/Priority";
 import { Dashboard } from "@/pages/Dashboard";
 import { Impact } from "@/pages/Impact";
 import { SplashScreen } from "@/components/SplashScreen";
@@ -17,6 +19,8 @@ export default function App() {
         <Route element={<Layout />}>
           <Route index element={<Home />} />
           <Route path="predict" element={<Predict />} />
+          <Route path="forecast" element={<Forecast />} />
+          <Route path="priority" element={<Priority />} />
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="impact" element={<Impact />} />
         </Route>

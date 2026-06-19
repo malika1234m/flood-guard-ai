@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { toast } from "sonner";
-import { Building2, CloudRain, Droplets, Gauge as GaugeIcon, MapPin, Satellite, Share2, SlidersHorizontal } from "lucide-react";
+import { ArrowLeft, Building2, ChevronRight, CloudRain, Droplets, Gauge as GaugeIcon, MapPin, Satellite, Share2, SlidersHorizontal, Trees, Waves, Zap } from "lucide-react";
 import { FactorsChart } from "@/components/FactorsChart";
 import { PageHero } from "@/components/PageHero";
 import { RiskGauge } from "@/components/RiskGauge";
@@ -19,6 +19,146 @@ import {
   type PredictRequest,
   type PredictResponse,
 } from "@/lib/api";
+
+const PROVINCE_GROUPS = [
+  { province: "Western",       color: "#38bdf8", districts: ["Colombo", "Gampaha", "Kalutara"] },
+  { province: "Central",       color: "#6366f1", districts: ["Kandy", "Matale", "Nuwara Eliya"] },
+  { province: "Southern",      color: "#22c55e", districts: ["Galle", "Hambantota", "Matara"] },
+  { province: "Northern",      color: "#f97316", districts: ["Jaffna", "Kilinochchi", "Mannar", "Mullaitivu", "Vavuniya"] },
+  { province: "Eastern",       color: "#eab308", districts: ["Ampara", "Batticaloa", "Trincomalee"] },
+  { province: "North Western", color: "#a855f7", districts: ["Kurunegala", "Puttalam"] },
+  { province: "North Central", color: "#14b8a6", districts: ["Anuradhapura", "Polonnaruwa"] },
+  { province: "Uva",           color: "#f43f5e", districts: ["Badulla", "Moneragala"] },
+  { province: "Sabaragamuwa",  color: "#84cc16", districts: ["Kegalle", "Ratnapura"] },
+];
+
+// ── Quick Mode step-2 options ─────────────────────────────────────────────────
+
+const AREA_OPTIONS = [
+  {
+    key: "Urban",
+    label: "Urban",
+    desc: "Dense buildings, high traffic, limited drainage",
+    color: "#38bdf8",
+    icon: Building2,
+  },
+  {
+    key: "Suburban",
+    label: "Suburban",
+    desc: "Mixed residential, moderate density — district typical",
+    color: "#38bdf8",
+    icon: Building2,
+  },
+  {
+    key: "Rural",
+    label: "Rural",
+    desc: "Farmland, open land, low population density",
+    color: "#22c55e",
+    icon: Trees,
+  },
+] as const;
+
+const TERRAIN_OPTIONS = [
+  {
+    key: "Lowland",
+    label: "Low-lying / Near river",
+    desc: "Flat land, close to a river, canal, or coast",
+    color: "#0ea5e9",
+    icon: Waves,
+  },
+  {
+    key: "Typical",
+    label: "Typical terrain",
+    desc: "Average elevation for this district",
+    color: "#38bdf8",
+    icon: MapPin,
+  },
+  {
+    key: "Highland",
+    label: "Elevated / Hillside",
+    desc: "Higher ground, slopes, or hill country",
+    color: "#8b5cf6",
+    icon: CloudRain,
+  },
+] as const;
+
+const RAINFALL_OPTIONS = [
+  { key: "Dry",     label: "Dry",     desc: "Little or no rain this week",           color: "#22c55e" },
+  { key: "Normal",  label: "Normal",  desc: "Typical seasonal rainfall",              color: "#38bdf8" },
+  { key: "Heavy",   label: "Heavy",   desc: "Sustained heavy rain — above average",   color: "#f97316" },
+  { key: "Extreme", label: "Extreme", desc: "Severe rainfall, potential flash floods", color: "#ef4444" },
+] as const;
+
+type AreaKey    = typeof AREA_OPTIONS[number]["key"];
+type TerrainKey = typeof TERRAIN_OPTIONS[number]["key"];
+type RainfallKey = typeof RAINFALL_OPTIONS[number]["key"];
+
+import type { DistrictProfile } from "@/lib/api";
+
+function applyQuickModifiers(
+  profile: DistrictProfile,
+  area: AreaKey,
+  terrain: TerrainKey,
+  rainfall: RainfallKey,
+  customElev: string,
+  customRiver: string,
+  customRain7d: string,
+): Partial<DistrictProfile> {
+  const p = profile;
+  const out: Partial<DistrictProfile> = {};
+
+  // Area type — affects density, built-up cover, drainage, infrastructure
+  if (area === "Urban") {
+    out.built_up_percent          = Math.min(95, p.built_up_percent + 25);
+    out.population_density_per_km2 = p.population_density_per_km2 * 2.0;
+    out.infrastructure_score      = Math.min(100, p.infrastructure_score + 8);
+    out.drainage_index            = Math.max(0, p.drainage_index - 0.25);
+    out.urban_rural               = "Urban";
+  } else if (area === "Rural") {
+    out.built_up_percent          = Math.max(2, p.built_up_percent - 20);
+    out.population_density_per_km2 = p.population_density_per_km2 * 0.3;
+    out.infrastructure_score      = Math.max(10, p.infrastructure_score - 15);
+    out.drainage_index            = Math.min(2, p.drainage_index + 0.2);
+    out.urban_rural               = "Rural";
+  }
+
+  // Terrain — affects elevation, river distance, water indices
+  if (terrain === "Lowland") {
+    out.elevation_m          = Math.max(1, p.elevation_m * 0.22);
+    out.distance_to_river_m  = 75;
+    out.water_presence_flag  = "Yes";
+    out.ndwi                 = Math.min(0.75, p.ndwi + 0.35);
+    out.drainage_index       = Math.max(0, (out.drainage_index ?? p.drainage_index) - 0.4);
+  } else if (terrain === "Highland") {
+    out.elevation_m         = p.elevation_m * 2.8;
+    out.distance_to_river_m = p.distance_to_river_m * 2.5;
+    out.drainage_index      = Math.min(2, (out.drainage_index ?? p.drainage_index) + 0.35);
+    out.ndwi                = Math.max(-0.5, p.ndwi - 0.25);
+    out.water_presence_flag = "No";
+  }
+
+  // Rainfall — affects 7-day and monthly totals
+  if (rainfall === "Dry") {
+    out.rainfall_7d_mm      = Math.round(p.rainfall_7d_mm * 0.12);
+    out.monthly_rainfall_mm = Math.round(p.monthly_rainfall_mm * 0.38);
+  } else if (rainfall === "Heavy") {
+    out.rainfall_7d_mm      = Math.round(p.rainfall_7d_mm * 2.8);
+    out.monthly_rainfall_mm = Math.round(p.monthly_rainfall_mm * 1.7);
+  } else if (rainfall === "Extreme") {
+    out.rainfall_7d_mm      = Math.round(p.rainfall_7d_mm * 6.5);
+    out.monthly_rainfall_mm = Math.round(p.monthly_rainfall_mm * 2.6);
+  }
+
+  // User-entered custom overrides (highest priority)
+  const elev  = parseFloat(customElev);
+  const river = parseFloat(customRiver);
+  const rain  = parseFloat(customRain7d);
+  if (!isNaN(elev))  out.elevation_m         = elev;
+  if (!isNaN(river)) out.distance_to_river_m = river;
+  if (!isNaN(rain))  out.rainfall_7d_mm      = rain;
+
+  return out;
+}
 
 interface FormState {
   district: string;
@@ -170,6 +310,15 @@ export function Predict() {
   const [loading, setLoading] = useState(false);
   const [rating, setRating] = useState(0);
   const [feedbackSent, setFeedbackSent] = useState(false);
+  const [quickMode, setQuickMode] = useState(false);
+  const [quickStep, setQuickStep] = useState<1 | 2>(1);
+  const [quickDistrict, setQuickDistrict] = useState<string | null>(null);
+  const [quickArea, setQuickArea]         = useState<AreaKey>("Suburban");
+  const [quickTerrain, setQuickTerrain]   = useState<TerrainKey>("Typical");
+  const [quickRainfall, setQuickRainfall] = useState<RainfallKey>("Normal");
+  const [quickCustomElev, setQuickCustomElev]   = useState("");
+  const [quickCustomRiver, setQuickCustomRiver] = useState("");
+  const [quickCustomRain7d, setQuickCustomRain7d] = useState("");
 
   useEffect(() => {
     getModelInfo()
@@ -202,6 +351,113 @@ export function Predict() {
     setLoading(true);
     try {
       const data = await predict(buildPayload(form));
+      setResult(data);
+      setRating(0);
+      setFeedbackSent(false);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Prediction failed");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // Step 1 → Step 2: just record the district and advance
+  function handleQuickDistrictSelect(district: string) {
+    setQuickDistrict(district);
+    setQuickArea("Suburban");
+    setQuickTerrain("Typical");
+    setQuickRainfall("Normal");
+    setQuickCustomElev("");
+    setQuickCustomRiver("");
+    setQuickCustomRain7d("");
+    setQuickStep(2);
+  }
+
+  // Step 2 → Run prediction with modifiers applied
+  async function handleQuickSubmit() {
+    const district = quickDistrict!;
+    const profile  = info?.district_profiles[district];
+    if (!profile) return;
+
+    const mods = applyQuickModifiers(
+      profile, quickArea, quickTerrain, quickRainfall,
+      quickCustomElev, quickCustomRiver, quickCustomRain7d,
+    );
+    const merged = { ...profile, ...mods };
+
+    // Keep the full form in sync so "Adjust details" works
+    setForm({
+      district,
+      urban_rural:               merged.urban_rural,
+      latitude:                  String(merged.latitude),
+      longitude:                 String(merged.longitude),
+      landcover:                 merged.landcover,
+      soil_type:                 merged.soil_type,
+      elevation_m:               String(merged.elevation_m),
+      distance_to_river_m:      String(merged.distance_to_river_m),
+      rainfall_7d_mm:            String(merged.rainfall_7d_mm),
+      monthly_rainfall_mm:       String(merged.monthly_rainfall_mm),
+      drainage_index:            String(merged.drainage_index),
+      historical_flood_count:    String(merged.historical_flood_count),
+      ndvi:                      String(merged.ndvi),
+      ndwi:                      String(merged.ndwi),
+      water_presence_flag:       merged.water_presence_flag,
+      population_density_per_km2: String(merged.population_density_per_km2),
+      built_up_percent:          String(merged.built_up_percent),
+      infrastructure_score:      String(merged.infrastructure_score),
+      water_supply:              merged.water_supply,
+      electricity:               merged.electricity,
+      road_quality:              merged.road_quality,
+      nearest_hospital_km:       String(merged.nearest_hospital_km),
+      nearest_evac_km:           String(merged.nearest_evac_km),
+      flood_occurrence_current_event: quickRainfall === "Extreme" ? "Yes" : "No",
+      inundation_area_sqm:       "0",
+      is_good_to_live:           "Yes",
+      reason_not_good_to_live:   "",
+      seasonal_index:            String(merged.seasonal_index),
+      terrain_roughness_index:   String(merged.terrain_roughness_index),
+      socioeconomic_status_index: String(merged.socioeconomic_status_index),
+      extreme_weather_index:     String(merged.extreme_weather_index),
+    });
+
+    const payload: PredictRequest = {
+      latitude:                  merged.latitude,
+      longitude:                 merged.longitude,
+      elevation_m:               merged.elevation_m,
+      distance_to_river_m:      merged.distance_to_river_m,
+      population_density_per_km2: merged.population_density_per_km2,
+      built_up_percent:          merged.built_up_percent,
+      rainfall_7d_mm:            merged.rainfall_7d_mm,
+      monthly_rainfall_mm:       merged.monthly_rainfall_mm,
+      drainage_index:            merged.drainage_index,
+      ndvi:                      merged.ndvi,
+      ndwi:                      merged.ndwi,
+      historical_flood_count:    merged.historical_flood_count,
+      infrastructure_score:      merged.infrastructure_score,
+      nearest_hospital_km:       merged.nearest_hospital_km,
+      nearest_evac_km:           merged.nearest_evac_km,
+      district,
+      landcover:                 merged.landcover,
+      soil_type:                 merged.soil_type,
+      water_supply:              merged.water_supply,
+      electricity:               merged.electricity,
+      road_quality:              merged.road_quality,
+      urban_rural:               merged.urban_rural,
+      water_presence_flag:       merged.water_presence_flag,
+      flood_occurrence_current_event: quickRainfall === "Extreme" ? "Yes" : "No",
+      inundation_area_sqm:       null,
+      is_good_to_live:           "Yes",
+      reason_not_good_to_live:   null,
+      seasonal_index:            merged.seasonal_index,
+      terrain_roughness_index:   merged.terrain_roughness_index,
+      socioeconomic_status_index: merged.socioeconomic_status_index,
+      extreme_weather_index:     merged.extreme_weather_index,
+      include_ai_report:         true,
+    };
+
+    setLoading(true);
+    try {
+      const data = await predict(payload);
       setResult(data);
       setRating(0);
       setFeedbackSent(false);
@@ -266,9 +522,257 @@ export function Predict() {
       <div className="grid grid-cols-1 gap-5.5 lg:grid-cols-[1.1fr_1fr] lg:items-start">
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">About the Location</CardTitle>
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5 min-w-0">
+                {quickMode && quickStep === 2 && (
+                  <button
+                    type="button"
+                    onClick={() => setQuickStep(1)}
+                    className="flex shrink-0 items-center gap-1 text-[0.78rem] font-semibold text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    <ArrowLeft className="h-3.5 w-3.5" />
+                    Districts
+                  </button>
+                )}
+                {quickMode && quickStep === 2 && (
+                  <span className="text-muted-foreground/40">/</span>
+                )}
+                <CardTitle className="text-lg truncate">
+                  {!quickMode
+                    ? "About the Location"
+                    : quickStep === 1
+                    ? "Quick Mode — Select District"
+                    : quickDistrict ?? "Refine Location"
+                  }
+                </CardTitle>
+              </div>
+              <Button
+                type="button"
+                variant={quickMode ? "gradient" : "brand-outline"}
+                size="sm"
+                className="gap-1.5 shrink-0"
+                onClick={() => {
+                  setQuickMode(!quickMode);
+                  setQuickStep(1);
+                  setQuickDistrict(null);
+                }}
+                disabled={!info}
+              >
+                <Zap className="h-3.5 w-3.5" />
+                {quickMode ? "Full form" : "Quick Mode"}
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
+            {quickMode ? (
+              quickStep === 1 ? (
+                /* ── Step 1: District selection ── */
+                <div>
+                  <p className="mb-5 text-[0.83rem] leading-relaxed text-muted-foreground">
+                    Pick a district to start. You&apos;ll then choose the type of area within it
+                    — terrain, density, and recent rainfall — before running the model.
+                  </p>
+                  <div className="space-y-5">
+                    {PROVINCE_GROUPS.map(({ province, color, districts }) => (
+                      <div key={province}>
+                        <div className="mb-2.5 flex items-center gap-2">
+                          <div className="h-1 w-6 rounded-full" style={{ backgroundColor: color }} />
+                          <span className="text-[0.7rem] font-bold uppercase tracking-[0.08em] text-muted-foreground">
+                            {province} Province
+                          </span>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {districts.map((d) => (
+                            <button
+                              key={d}
+                              type="button"
+                              onClick={() => handleQuickDistrictSelect(d)}
+                              className={cn(
+                                "group flex items-center gap-1.5 rounded-full border px-4 py-2 text-[0.82rem] font-semibold",
+                                "transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1",
+                                "border-border bg-white/[0.04] text-muted-foreground",
+                                "hover:border-white/25 hover:bg-white/[0.08] hover:text-foreground hover:shadow-sm active:scale-[0.97]",
+                              )}
+                            >
+                              {d}
+                              <ChevronRight className="h-3 w-3 opacity-0 -translate-x-1 transition-all duration-150 group-hover:opacity-60 group-hover:translate-x-0" />
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                /* ── Step 2: Refine location ── */
+                <div className="space-y-6">
+
+                  {/* Area type */}
+                  <div>
+                    <div className="mb-2 text-[0.75rem] font-bold uppercase tracking-[0.07em] text-muted-foreground">
+                      Area type
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {AREA_OPTIONS.map(({ key, label, desc, color }) => {
+                        const isActive = quickArea === key;
+                        return (
+                          <button
+                            key={key}
+                            type="button"
+                            title={desc}
+                            onClick={() => setQuickArea(key)}
+                            className={cn(
+                              "rounded-lg border px-4 py-2.5 text-left transition-all duration-150",
+                              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1",
+                              isActive
+                                ? "border-transparent text-white shadow-md"
+                                : "border-border bg-white/[0.03] text-muted-foreground hover:border-white/20 hover:bg-white/[0.07] hover:text-foreground",
+                            )}
+                            style={isActive ? { backgroundColor: color, boxShadow: `0 3px 12px ${color}35` } : undefined}
+                          >
+                            <div className="text-[0.82rem] font-semibold">{label}</div>
+                            <div className={cn("mt-0.5 text-[0.68rem] leading-snug", isActive ? "text-white/75" : "text-muted-foreground/70")}>
+                              {desc}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Terrain */}
+                  <div>
+                    <div className="mb-2 text-[0.75rem] font-bold uppercase tracking-[0.07em] text-muted-foreground">
+                      Location within district
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {TERRAIN_OPTIONS.map(({ key, label, desc, color, icon: Icon }) => {
+                        const isActive = quickTerrain === key;
+                        return (
+                          <button
+                            key={key}
+                            type="button"
+                            title={desc}
+                            onClick={() => setQuickTerrain(key)}
+                            className={cn(
+                              "flex items-start gap-2.5 rounded-lg border px-4 py-2.5 text-left transition-all duration-150",
+                              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1",
+                              isActive
+                                ? "border-transparent text-white shadow-md"
+                                : "border-border bg-white/[0.03] text-muted-foreground hover:border-white/20 hover:bg-white/[0.07] hover:text-foreground",
+                            )}
+                            style={isActive ? { backgroundColor: color, boxShadow: `0 3px 12px ${color}35` } : undefined}
+                          >
+                            <Icon className={cn("mt-0.5 h-4 w-4 shrink-0", isActive ? "text-white/90" : "text-muted-foreground/60")} />
+                            <div>
+                              <div className="text-[0.82rem] font-semibold">{label}</div>
+                              <div className={cn("mt-0.5 text-[0.68rem] leading-snug", isActive ? "text-white/75" : "text-muted-foreground/70")}>
+                                {desc}
+                              </div>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Rainfall */}
+                  <div>
+                    <div className="mb-2 text-[0.75rem] font-bold uppercase tracking-[0.07em] text-muted-foreground">
+                      Recent rainfall
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {RAINFALL_OPTIONS.map(({ key, label, desc, color }) => {
+                        const isActive = quickRainfall === key;
+                        return (
+                          <button
+                            key={key}
+                            type="button"
+                            title={desc}
+                            onClick={() => setQuickRainfall(key)}
+                            className={cn(
+                              "rounded-lg border px-4 py-2.5 text-left transition-all duration-150",
+                              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1",
+                              isActive
+                                ? "border-transparent text-white shadow-md"
+                                : "border-border bg-white/[0.03] text-muted-foreground hover:border-white/20 hover:bg-white/[0.07] hover:text-foreground",
+                            )}
+                            style={isActive ? { backgroundColor: color, boxShadow: `0 3px 12px ${color}35` } : undefined}
+                          >
+                            <div className="text-[0.82rem] font-semibold">{label}</div>
+                            <div className={cn("mt-0.5 text-[0.68rem] leading-snug", isActive ? "text-white/75" : "text-muted-foreground/70")}>
+                              {desc}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Optional key overrides */}
+                  <details className="rounded-[10px] border border-border bg-white/[0.02] px-3.5 py-2">
+                    <summary className="cursor-pointer py-1.5 text-[0.8rem] font-semibold text-brand">
+                      Enter exact values (optional)
+                    </summary>
+                    <p className="mt-1 mb-3 text-[0.75rem] text-muted-foreground leading-relaxed">
+                      Know the specific details? Override any of the three most impactful fields.
+                      Leave blank to use values derived from your selections above.
+                    </p>
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                      {[
+                        { id: "qElev",  label: "Elevation (m)",           value: quickCustomElev,   set: setQuickCustomElev,   placeholder: "e.g. 15" },
+                        { id: "qRiver", label: "Distance to river (m)",   value: quickCustomRiver,  set: setQuickCustomRiver,  placeholder: "e.g. 200" },
+                        { id: "qRain",  label: "Last 7-day rainfall (mm)", value: quickCustomRain7d, set: setQuickCustomRain7d, placeholder: "e.g. 180" },
+                      ].map(({ id, label, value, set: setter, placeholder }) => (
+                        <div key={id}>
+                          <label htmlFor={id} className="mb-1 block text-[0.72rem] font-semibold text-muted-foreground">
+                            {label}
+                          </label>
+                          <input
+                            id={id}
+                            type="number"
+                            value={value}
+                            onChange={(e) => setter(e.target.value)}
+                            placeholder={placeholder}
+                            className="h-9 w-full rounded-lg border border-border bg-card px-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-brand/40"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </details>
+
+                  {/* Submit */}
+                  <Button
+                    type="button"
+                    variant="gradient"
+                    size="xl"
+                    className="w-full gap-2"
+                    disabled={loading}
+                    onClick={handleQuickSubmit}
+                  >
+                    {loading ? (
+                      <><span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" /> Running model…</>
+                    ) : (
+                      <>Get Flood Risk Reading</>
+                    )}
+                  </Button>
+
+                  {/* Adjust in full form */}
+                  <div className="flex items-center justify-between border-t border-border pt-3">
+                    <span className="text-[0.75rem] text-muted-foreground">
+                      Need more control?
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setQuickMode(false)}
+                      className="text-[0.78rem] font-semibold text-brand hover:underline"
+                    >
+                      Open full form with these values →
+                    </button>
+                  </div>
+                </div>
+              )
+            ) : (
             <form onSubmit={handleSubmit}>
               <FieldSection title="Location" icon={MapPin} description="Pinpoint the location on a map, or use your best estimate for the area.">
                 <FieldGrid>
@@ -515,6 +1019,7 @@ export function Predict() {
                 {loading ? "Checking…" : "Check Flood Risk"}
               </Button>
             </form>
+            )}
           </CardContent>
         </Card>
 
@@ -525,11 +1030,31 @@ export function Predict() {
           <CardContent>
             {!result ? (
               <div className="flex flex-col items-center gap-3 py-15 text-center leading-relaxed text-muted-foreground">
-                <Droplets className="h-10 w-10 text-brand/50" strokeWidth={1.5} aria-hidden="true" />
-                <p>
-                  Fill in the form and click <strong>Check Flood Risk</strong> to see the risk score, category, and
-                  a plain-language report with recommended next steps.
-                </p>
+                {loading ? (
+                  <>
+                    <span className="h-10 w-10 animate-spin rounded-full border-4 border-brand/20 border-t-brand" />
+                    <div className="text-center">
+                      <p className="font-semibold">Running model for <strong>{quickDistrict}</strong>…</p>
+                      {quickMode && (
+                        <p className="mt-1 text-[0.8rem] text-muted-foreground/70">
+                          {quickArea} · {TERRAIN_OPTIONS.find(t => t.key === quickTerrain)?.label} · {quickRainfall} rainfall
+                        </p>
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <Droplets className="h-10 w-10 text-brand/50" strokeWidth={1.5} aria-hidden="true" />
+                    <p>
+                      {quickMode && quickStep === 1
+                        ? "Select a district to continue."
+                        : quickMode && quickStep === 2
+                        ? <>Choose your conditions on the left, then click <strong>Get Flood Risk Reading</strong>.</>
+                        : <>Fill in the form and click <strong>Check Flood Risk</strong> to see the risk score, category, and a plain-language report.</>
+                      }
+                    </p>
+                  </>
+                )}
               </div>
             ) : (
               <div className="flex flex-col gap-4">

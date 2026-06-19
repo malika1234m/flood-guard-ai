@@ -71,9 +71,16 @@ a time."**
 - Result: OOF custom metric **0.4071** (vs 0.383 for the heavier Initial Round
   search) — an explicit, documented trade-off of leaderboard score for
   **deployability**.
-- **New**: an **AI Risk Advisor** (Claude `claude-haiku-4-5`, with a
+- **New**: an **AI Risk Advisor** (GPT-4o-mini via OpenAI, with a
   deterministic template fallback) that turns the score + top contributing
   features into a plain-language report and recommendations.
+- **New**: **Quick Mode** on `/predict` — click any district chip (grouped by
+  province) to auto-fill all 26 fields from district median values and score
+  instantly — no form required.
+- **New**: **10-day Flood Forecast** (`/forecast`) — Open-Meteo rainfall fed
+  through the model for all 25 districts, animated day-by-day with district map.
+- **New**: **Emergency Priority** (`/priority`) — composite response-priority
+  ranking for all 25 districts using a weighted formula across 5 factors.
 
 *Slide idea:* the "v10 (batch) → FloodGuard AI (fit/transform)" table from the
 technical report (§3.2) — it's the single best visual for "what we actually
@@ -107,8 +114,9 @@ Cover all five expected components quickly, one bullet each:
   training run's hyperparameters and metrics; `models/v1/metadata.json` records
   feature count, CV metrics, Ridge weights, and feature importances —
   versioned, so `v2`, `v3`, … can be compared directly.
-- **Deployment**: `Dockerfile` + `render.yaml` → Render Docker web service,
-  `/health` check, optional `ANTHROPIC_API_KEY`.
+- **Deployment**: `Dockerfile` → Railway Docker web service, `/health` check,
+  optional `OPENAI_API_KEY` (already set in production; `ai_report.source` is
+  `"llm"` for all live requests). `render.yaml` kept as documented alternative.
 - **Monitoring**: every prediction logged to SQLite (input, score, category,
   latency, OOD flags); `/monitoring/stats` + `/dashboard` visualize volume,
   score distribution, district/category breakdowns, latency, and user feedback.
@@ -121,31 +129,41 @@ Cover all five expected components quickly, one bullet each:
 
 ## 7. Demonstration (~2.5 min — the core of the talk)
 
-Live demo script (have the Render URL open, plus a backup screen-recording per
+Live demo script (have the Railway URL open, plus a backup screen-recording per
 the booklet's recommendation):
 
-0. **Landing page**: start on `/` &mdash; the animated hero, "how it works" steps,
-   and live model snapshot (version, feature count, OOF metric pulled from
-   `/model/info`) give judges the big picture before diving in. Click
-   **Assess a location** to go to `/predict`.
-1. **Prediction flow**: fill the form for a flood-prone location (e.g. Colombo,
-   near a river, high rainfall) → submit → show the **risk gauge**, **risk
-   category**, **model breakdown** (lgb/cat/xgb), **top contributing factors**
-   chart, and the **AI-generated risk report** with recommendations.
-2. **Edge case**: submit a location with an out-of-range value (e.g. an
-   unusually low elevation or negative rainfall) → show the **OOD flag**
-   appearing in the response.
-3. **Feedback**: rate the prediction with the star widget → mention this feeds
-   `/feedback` → SQLite.
-4. **Dashboard**: switch to `/dashboard` → show prediction volume, score
-   histogram, category/district breakdowns, latency, and the feedback you just
-   submitted appearing live.
-5. (Optional, if time) **API docs**: hit `/docs` to show the auto-generated
-   OpenAPI schema — "any client can integrate against this."
+0. **Landing page** (`/`): animated hero, "how it works" steps, live model
+   snapshot (version, feature count, OOF metric) pulled from `/model/info`. The
+   geolocation live-risk preview fires automatically if location permission is
+   granted.
+1. **Quick Mode** (`/predict` → click **⚡ Quick Mode**): click any district
+   chip (e.g. Colombo) — the result appears instantly in the panel on the right
+   with a full AI report. No form filling required. Click **Adjust details →**
+   to see the full form pre-filled with that district's values.
+2. **Full prediction flow**: switch back to the full form, change a few values
+   (high rainfall, low elevation, near a river) → submit → show the **risk
+   gauge**, **model breakdown** (lgb/cat/xgb scores), **top contributing
+   factors** chart, and the **AI-generated risk report**.
+3. **OOD flag**: submit a value well outside normal range (e.g. elevation = 0)
+   → show the out-of-distribution warning appearing in the result.
+4. **10-day Forecast** (`/forecast`): page auto-loads on arrival — show the
+   KPI strip (peak day, peak score, trend), click **Animate** to step through
+   the risk timeline, hover the SVG map to inspect district dots, click a
+   different district in the ranking table to switch.
+5. **Emergency Priority** (`/priority`): auto-loaded priority ranking of all 25
+   districts — click any row to expand the score breakdown (five progress bars
+   showing each factor's contribution).
+6. **Feedback + Dashboard** (`/dashboard`): rate the prediction with the star
+   widget → switch to `/dashboard` → show the prediction just logged live in
+   the score histogram and district breakdown.
+7. (Optional, if time) **API docs** (`/docs`): auto-generated OpenAPI schema —
+   "any system can integrate against this REST API."
 
-*Speaker note:* rehearse this end-to-end at least once against the **live
-Render URL**, not just localhost — and have the screen-recording ready as a
-fallback if the live demo or network fails.
+*Speaker note:* rehearse this against the **live Railway URL**
+(`https://floodguard-production.up.railway.app`), not just localhost — and
+keep a screen-recording ready as a fallback if the network fails during the
+demo. The forecast page may take 5–10 seconds to load (25 districts × 10 days
+of Open-Meteo calls); mention this is cached for an hour after first load.
 
 ---
 
@@ -180,33 +198,39 @@ maturity, not for hiding problems:
 
 - Periodic retraining as new labeled data arrives, versioned as `models/v2/`,
   `v3/`, … and compared via MLflow run history.
-- Lightweight, request-time-feasible pseudo-labeling using accumulated
-  predictions + user feedback from the monitoring database.
-- Model-drift alerting on the dashboard (rolling OOD-flag rate vs. baseline).
+- KS-test data-drift GHA workflow: weekly GitHub Actions job comparing incoming
+  feature distributions against training baselines, flagging significant drift.
+- Lightweight pseudo-labeling using accumulated predictions + user feedback as a
+  weak-label source.
 - Multilingual AI Risk Advisor (Sinhala/Tamil) for end users in the regions the
   model covers.
+- Push notifications for the mobile app when a user's district crosses a risk
+  threshold (requires background location + FCM integration).
 
 *Closing line:* "FloodGuard AI shows the Initial Round model didn't just survive
 the transition to production — its core ideas (ensembling, stacking,
-calibration) are exactly what made that transition work."
+calibration) are exactly what made that transition work. And the same district-
+level insight that drove the leaderboard score now powers a real-time emergency
+priority ranking for civil defence."
 
 ---
 
 ## Timing summary
 
-| Section | Time |
+| Section | Suggested time |
 |---|---|
 | 1. Team Introduction | 0:30 |
 | 2. Problem Understanding | 1:00 |
-| 3. Initial Round Approach | 1:00 |
+| 3. Initial Round Approach | 0:45 |
 | 4. Improvements Made | 1:30 |
-| 5. System Architecture | 1:30 |
-| 6. MLOps Workflow | 1:30 |
-| 7. Demonstration | 2:30 |
-| 8. Challenges Faced | 1:00 |
-| 9. Future Improvements | 0:45 |
-| **Total** | **~11:15** |
+| 5. System Architecture | 1:00 |
+| 6. MLOps Workflow | 1:00 |
+| 7. Demonstration | 3:00 |
+| 8. Challenges Faced | 0:45 |
+| 9. Future Improvements | 0:30 |
+| **Total** | **~10:00** |
 
-The raw total runs slightly over 10 minutes — trim Demonstration to ~2 min and
-System Architecture / MLOps Workflow to ~1 min each during rehearsal to land
-inside the 8–10 minute window.
+The demo is the most impactful section — spend the extra time there. Quick Mode
+and the Forecast/Priority pages are the most visually impressive; lead with Quick
+Mode, then Forecast, then the dashboard to show the full arc from "instant
+reading" to "10-day planning tool" to "monitored system."

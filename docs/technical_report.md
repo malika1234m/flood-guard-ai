@@ -10,11 +10,17 @@ FloodGuard AI is an end-to-end MLOps system that turns the Initial Round flood-r
 model for Sri Lanka into a deployed product. It packages a 223-feature, 3-model
 ensemble (the production evolution of the Initial Round's winning ideas) behind a
 FastAPI service that serves a prediction form, a REST API, an AI-generated risk
-report (Claude, with a deterministic fallback), and a live monitoring dashboard —
-all from a single Docker image deployed on Railway. A companion **Expo /
-React Native mobile app** (Android APK + Expo Go) talks to the same live backend
-and adds a geolocation-based "what's the risk where I am right now" preview on
-both clients.
+report (GPT-4o-mini via OpenAI, with a deterministic fallback), and a live
+monitoring dashboard — all from a single Docker image deployed on Railway. A
+companion **Expo / React Native mobile app** (Android APK + Expo Go) talks to
+the same live backend and adds a geolocation-based "what's the risk where I am
+right now" preview on both clients.
+
+The web frontend includes three purpose-built pages beyond the core prediction
+form: a **Quick Mode** that scores any district in one click from typical
+conditions; a **10-day Flood Forecast** page driven by live Open-Meteo rainfall
+forecasts with an animated district map; and an **Emergency Priority** page that
+ranks all 25 districts by a composite response-priority score.
 
 This report covers Problem Understanding, System Architecture, the Machine
 Learning Approach (Initial Round summary and Final Round improvements), and MLOps
@@ -113,11 +119,11 @@ flowchart LR
     end
 
     subgraph svc ["FastAPI service — single Docker image, deployed on Railway"]
-        API[REST API\n/predict /health /model/info\n/feedback /monitoring/stats]
+        API[REST API\n/predict /predict/batch /forecast\n/emergency-priority /readiness /feedback]
         DP[(district_profiles.json\n25 districts)]
         FE[FeatureEngineer\n223 engineered features]
         ENS["Ensemble\nLightGBM + CatBoost + XGBoost\n+ Ridge meta-stack + calibration"]
-        LLM["LLM Risk Advisor\nClaude haiku-4.5, template fallback"]
+        LLM["LLM Risk Advisor\nGPT-4o-mini (OpenAI), template fallback"]
         MON[(SQLite\nmonitoring.db)]
         DASH[Monitoring dashboard]
     end
@@ -328,10 +334,12 @@ documented, deliberate cost of that trade-off.
 
 4. **AI Risk Advisor.** A new component with no Initial Round analogue:
    `src/llm_advisor.py` turns the score + top contributing features into a
-   plain-language summary and recommended actions via **Claude
-   (`claude-haiku-4-5`)**, with a deterministic template fallback if
-   `ANTHROPIC_API_KEY` is not set — satisfying the "AI-powered product" track and
-   Rule 5's disclosure requirement.
+   plain-language summary and recommended actions via **GPT-4o-mini** (OpenAI
+   API), with a deterministic template fallback if `OPENAI_API_KEY` is not set —
+   satisfying the "AI-powered product" track and Rule 5's disclosure requirement.
+   The live Railway deployment runs the real model; `ai_report.source` will be
+   `"llm"` for all production requests and `"template"` for local runs without
+   the key.
 
 ---
 
@@ -344,7 +352,7 @@ documented, deliberate cost of that trade-off.
   copies the resulting `frontend/dist/` build into a `python:3.11-slim` stage
   that installs the minimal runtime dependency set (`requirements-app.txt` —
   pandas, numpy, scikit-learn, lightgbm, catboost, xgboost, fastapi, uvicorn,
-  anthropic; the heavier dev/training dependencies — optuna, mlflow,
+  openai, httpx; the heavier dev/training dependencies — optuna, mlflow,
   matplotlib, pytest — are kept in `requirements.txt` only) and copies `src/`,
   `app/`, and the trained `models/v1/` artifacts into the image.
   `.dockerignore` excludes the dataset, MLflow store, virtualenv,
@@ -356,12 +364,12 @@ documented, deliberate cost of that trade-off.
 - **Cloud deployment**: the live demo runs on **Railway** (`floodguard`
   service, `sfo` region), built directly from the `Dockerfile` via
   `railway up`, with `/health` as the readiness check and an optional
-  `ANTHROPIC_API_KEY` environment variable. `render.yaml` is kept as a
+  `OPENAI_API_KEY` environment variable. `render.yaml` is kept as a
   documented alternative — Render builds the same `Dockerfile` with no separate
   build step or artifact registry, since `models/v1/` ships inside the image.
-- **Web deployment**: the same image serves `/` (landing page), `/predict`
-  (prediction form), and `/dashboard` (monitoring dashboard), so judges reach
-  the full product through one URL with no extra setup, per the "Deployment
+- **Web deployment**: the same image serves all frontend routes (`/`, `/predict`,
+  `/forecast`, `/priority`, `/dashboard`, `/impact`) and all API routes, so judges
+  reach the full product through one URL with no extra setup, per the "Deployment
   Link" requirement.
 - **Mobile deployment**: the Expo app (`mobile/`) is built into a standalone,
   installable **Android APK** via EAS Build (`eas build --platform android
@@ -430,16 +438,29 @@ a rich district/geo/interaction feature set — can be re-engineered into a
 deployable, monitored, single-record-serving system without abandoning what made
 the original model competitive.
 
-**Future improvements** (also covered in the presentation):
+Beyond the core prediction pipeline, the Final Round extends the product with
+three additional user-facing capabilities that demonstrate the model's practical
+utility in an emergency-response context:
+
+- **Quick Mode** (`/predict`) — one-click district scoring from median conditions,
+  with province-grouped district chips for fast exploration (no form required).
+- **10-day Flood Forecast** (`/forecast`) — all 25 districts scored against live
+  Open-Meteo 10-day rainfall forecasts, with an animated timeline slider,
+  district-level SVG map, and an all-districts ranking table that updates per day.
+- **Emergency Priority** (`/priority`) — composite district ranking using
+  `0.40×risk + 0.25×population + 0.20×evacuation_gap + 0.10×flood_history +
+  0.05×infra_weakness`, with expandable score breakdowns and action recommendations.
+
+**Future improvements:**
 
 - Periodic retraining as new labeled flood events become available, versioned as
   `models/v2/`, `v3/`, … and compared via the MLflow run history.
 - Re-introducing a lightweight, request-time-feasible form of pseudo-labeling
   using the monitoring database's accumulated predictions + user feedback as a
   weak-label source.
-- A model-drift alert (e.g. comparing the rolling distribution of incoming
-  `flag_out_of_distribution` counts against a baseline) surfaced on the
-  dashboard.
+- A KS-test data-drift GHA workflow comparing incoming feature distributions
+  against training baselines, with dashboard alerts when significant drift is
+  detected.
 - Expanding the LLM Risk Advisor to support multiple languages (Sinhala/Tamil)
   for end users in the regions the model covers.
 - Publishing the mobile app to the Play Store / TestFlight (currently

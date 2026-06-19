@@ -209,6 +209,88 @@ export interface FloodAlert {
   message: string;
 }
 
+// ── Batch predict ──────────────────────────────────────────────────────
+
+export interface BatchPredictResponse {
+  results: PredictResponse[];
+  total: number;
+  avg_score: number;
+}
+
+export function predictBatch(records: PredictRequest[], include_ai_report = false) {
+  return request<BatchPredictResponse>("/predict/batch", {
+    method: "POST",
+    body: JSON.stringify({ records, include_ai_report }),
+  });
+}
+
+// ── 10-day forecast ────────────────────────────────────────────────────
+
+export interface ForecastDay {
+  date: string;
+  day_index: number;
+  rainfall_mm: number;
+  cumulative_7d_mm: number;
+  flood_risk_score: number;
+  risk_category: string;
+}
+
+export interface DistrictForecast {
+  district: string;
+  forecast_days: ForecastDay[];
+  peak_risk_day: number;
+  peak_risk_score: number;
+  avg_risk_score: number;
+  trend: "Worsening" | "Improving" | "Stable";
+  typical_score: number;
+}
+
+export function getDistrictForecast(district: string) {
+  return request<DistrictForecast>(`/forecast/${encodeURIComponent(district)}`);
+}
+
+export function getAllForecasts() {
+  return request<DistrictForecast[]>("/forecast");
+}
+
+// ── Emergency priority ─────────────────────────────────────────────────
+
+export interface EmergencyPriorityItem {
+  rank: number;
+  district: string;
+  priority_score: number;
+  flood_risk_score: number;
+  risk_category: string;
+  population_score: number;
+  evacuation_gap_score: number;
+  flood_history_score: number;
+  infrastructure_weakness_score: number;
+  recommended_action: string;
+  reasons: string[];
+}
+
+export function getEmergencyPriority() {
+  return request<EmergencyPriorityItem[]>("/emergency-priority");
+}
+
+// ── Readiness ──────────────────────────────────────────────────────────
+
+export interface ReadinessCheck {
+  name: string;
+  status: "ok" | "failed" | "skipped";
+  detail?: string | null;
+}
+
+export interface ReadinessResponse {
+  overall: "ok" | "degraded" | "down";
+  checks: ReadinessCheck[];
+  model_version: string;
+}
+
+export function getReadiness() {
+  return request<ReadinessResponse>("/readiness");
+}
+
 export function getDistrictRisks() {
   return request<DistrictRisk[]>("/district-risks");
 }

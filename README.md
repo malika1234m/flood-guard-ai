@@ -17,13 +17,18 @@ FloodGuard AI returns:
 
 - A **flood risk score** (0-1) and category (`Low` / `Moderate` / `High` / `Severe`)
 - The **top contributing factors** for that prediction
-- An **AI-generated risk report** (Claude, with a deterministic fallback) summarizing
+- An **AI-generated risk report** (GPT-4o-mini via OpenAI, with a deterministic fallback) summarizing
   the situation and recommending concrete actions
 - **Out-of-distribution flags** when inputs fall outside the training data's
   typical ranges
 
 Every prediction and piece of user feedback is logged and visualized on a
 built-in **monitoring dashboard**.
+
+The web app also includes:
+- **Quick Mode** on `/predict` — click any district to instantly score it from typical conditions
+- **10-day flood forecast** (`/forecast`) — animated district-level risk timeline using Open-Meteo rainfall
+- **Emergency priority ranking** (`/priority`) — composite score across risk, population, evacuation gap, flood history, and infrastructure
 
 ---
 
@@ -36,10 +41,10 @@ flowchart LR
     end
 
     subgraph FastAPI Service ["FastAPI service (single Docker image)"]
-        API[REST API\n/predict /health /model/info /feedback]
+        API[REST API\n/predict /predict/batch /forecast\n/emergency-priority /readiness /feedback]
         FE[FeatureEngineer\n223 engineered features]
         ENS[Ensemble\nLightGBM + CatBoost + XGBoost\n+ Ridge meta-stack + calibration]
-        LLM[LLM Risk Advisor\nClaude haiku, template fallback]
+        LLM[LLM Risk Advisor\nGPT-4o-mini, template fallback]
         MON[(SQLite\nmonitoring.db)]
         DASH[Monitoring dashboard]
     end
@@ -81,15 +86,16 @@ flood-guard-ai/
 │   ├── features.py        FeatureEngineer (fit/transform/save/load)
 │   ├── train.py            training pipeline + MLflow logging
 │   ├── inference.py        FloodRiskPredictor (single-record scoring)
-│   └── llm_advisor.py      Claude risk report + template fallback
+│   └── llm_advisor.py      GPT-4o-mini risk report + template fallback
 ├── models/v1/              trained model artifacts + metadata.json
 ├── mlruns/                  MLflow local tracking store (experiment history)
 ├── app/
 │   ├── main.py              FastAPI app (API + serves frontend/dist)
 │   ├── schemas.py           pydantic request/response models
+│   ├── weather.py           Open-Meteo integration + 10-day forecast cache
 │   └── monitoring.py        SQLite logging + stats aggregation
 ├── frontend/                React + Vite + TypeScript + Tailwind UI
-│   ├── src/pages/           Home, Predict, Dashboard, Impact
+│   ├── src/pages/           Home, Predict (+ Quick Mode), Forecast, Priority, Dashboard, Impact
 │   ├── src/components/       form fields, charts, risk gauge, live preview, etc.
 │   └── dist/                 production build (generated, served by app/main.py)
 ├── mobile/                  React Native (Expo) app — Home, Predict, Dashboard
@@ -200,8 +206,11 @@ list of recommended actions, returned as structured JSON.
   credentials), the advisor falls back to a **deterministic template** keyed on
   risk category — the API and UI continue to work identically, with
   `ai_report.source` indicating `"llm"` or `"template"`.
+- The live Railway deployment uses the real GPT-4o-mini model; `ai_report.source`
+  will be `"llm"` for all production requests.
 
-No other external/third-party model, dataset, or service is used.
+No other external/third-party model, dataset, or service is used (Open-Meteo
+rainfall data is public and requires no API key).
 
 ---
 
@@ -214,7 +223,7 @@ python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 
 # (optional) enable the LLM advisor
-export ANTHROPIC_API_KEY=sk-...
+export OPENAI_API_KEY=sk-...
 
 # train (reproduces models/v1/ — already included in the repo)
 python -m src.train
@@ -259,7 +268,7 @@ railway domain --service floodguard  # generate a public *.up.railway.app URL
 (Optional) enable the LLM-generated risk reports:
 
 ```bash
-railway variables set ANTHROPIC_API_KEY=sk-... --service floodguard
+railway variables set OPENAI_API_KEY=sk-... --service floodguard
 ```
 
 Railway auto-detects the `Dockerfile`, injects `$PORT`, and exposes the service
@@ -270,7 +279,7 @@ on `/health`, `/`, `/dashboard`, `/predict`, etc.
 1. Push this repo to GitHub.
 2. In Render: **New → Blueprint** → connect the repo (`render.yaml` is auto-detected),
    or **New → Web Service** with environment **Docker**.
-3. (Optional) set `ANTHROPIC_API_KEY` in the service's environment variables to
+3. (Optional) set `OPENAI_API_KEY` in the service's environment variables to
    enable the LLM-generated risk reports.
 4. Render builds the `Dockerfile` and exposes the service the same way.
 
@@ -280,7 +289,7 @@ The same image can be built and run with:
 
 ```bash
 docker build -t floodguard-ai .
-docker run -p 8000:8000 -e ANTHROPIC_API_KEY=sk-... floodguard-ai
+docker run -p 8000:8000 -e OPENAI_API_KEY=sk-... floodguard-ai
 ```
 
 ---
@@ -290,13 +299,18 @@ docker run -p 8000:8000 -e ANTHROPIC_API_KEY=sk-... floodguard-ai
 | Method | Path | Description |
 |---|---|---|
 | `GET` | `/health` | Liveness + model-loaded check |
-| `GET` | `/model/info` | Model version, metrics, feature importances, dropdown options, district defaults |
-| `POST` | `/predict` | Score a record → risk score, category, top factors, AI report, OOD flags |
-| `POST` | `/feedback` | Submit user feedback for a prediction |
+| `GET` | `/readiness` | 5-point health check: artifact, model, metadata, district profiles, DB |
+| `GET` | `/model/info` | Model version, metrics, feature importances, dropdown options, district profiles |
+| `POST` | `/predict` | Score a single record → risk score, category, top factors, AI report, OOD flags |
+| `POST` | `/predict/batch` | Score up to 100 records at once → all predictions + average score |
+| `GET` | `/forecast/{district}` | 10-day flood risk forecast for a single district (Open-Meteo) |
+| `GET` | `/forecast` | 10-day forecast for all 25 districts (cached 1 hour) |
+| `GET` | `/emergency-priority` | Districts ranked by composite priority score (risk + population + evac gap + history + infra) |
+| `GET` | `/district-risks` | Typical risk score + category for all 25 districts |
+| `GET` | `/live-risks` | Same as `/district-risks` but with live Open-Meteo rainfall substituted |
+| `GET` | `/alerts` | Districts where live rainfall is pushing risk into a higher category |
+| `POST` | `/feedback` | Submit user accuracy rating for a prediction |
 | `GET` | `/monitoring/stats` | Aggregated monitoring stats for the dashboard |
-| `GET` | `/` | Landing page (frontend) |
-| `GET` | `/predict` | Flood risk predictor form (frontend) |
-| `GET` | `/dashboard` | Monitoring dashboard (frontend) |
 
 Full request/response schemas: `/docs` (Swagger UI) when the app is running.
 
