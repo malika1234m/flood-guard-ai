@@ -266,7 +266,9 @@ def monitoring_stats():
 
 
 # ── React frontend (built via `npm run build` in frontend/) ──────────────
-app.mount("/assets", StaticFiles(directory=str(FRONTEND_DIST / "assets")), name="assets")
+# Only mount when the build exists — skipped in CI where npm build hasn't run
+if (FRONTEND_DIST / "assets").exists():
+    app.mount("/assets", StaticFiles(directory=str(FRONTEND_DIST / "assets")), name="assets")
 
 
 @app.get("/{full_path:path}", response_class=FileResponse, include_in_schema=False)
