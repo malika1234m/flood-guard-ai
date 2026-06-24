@@ -3,9 +3,11 @@ import { cn } from "@/lib/utils";
 
 const navItems = [
   { to: "/", label: "Home" },
-  { to: "/predict", label: "Predict" },
+  { to: "/district", label: "My District" },
   { to: "/forecast", label: "Forecast" },
   { to: "/priority", label: "Priority" },
+  { to: "/alerts", label: "Alerts" },
+  { to: "/predict", label: "Advanced" },
   { to: "/dashboard", label: "Dashboard" },
   { to: "/impact", label: "Impact" },
 ];

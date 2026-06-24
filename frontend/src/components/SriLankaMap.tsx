@@ -35,8 +35,15 @@ const TREND_ARROW: Record<string, string> = {
   Stable: "·",
 };
 
-export function SriLankaMap() {
-  const [mode, setMode] = useState<"typical" | "live">("typical");
+interface SriLankaMapProps {
+  /** Externally controlled selected district. When provided, highlights that bubble. */
+  controlledDistrict?: string;
+  /** Called when user clicks a district bubble. When provided, map acts as a picker. */
+  onDistrictClick?: (district: string) => void;
+}
+
+export function SriLankaMap({ controlledDistrict: _controlledDistrict, onDistrictClick: _onDistrictClick }: SriLankaMapProps = {}) {
+  const [mode, setMode] = useState<"typical" | "live">("live");
   const [risks, setRisks] = useState<DistrictRisk[]>([]);
   const [liveRisks, setLiveRisks] = useState<LiveDistrictRisk[]>([]);
   const [liveLoading, setLiveLoading] = useState(false);

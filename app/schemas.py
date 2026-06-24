@@ -69,7 +69,7 @@ class PredictResponse(BaseModel):
     flood_risk_score: float
     risk_category: str
     raw_score: float
-    calibration_shift: float
+    calibration_shift: float = 0.0   # kept for API compatibility; v2 uses posthoc instead
     base_model_scores: dict[str, float]
     model_version: str
     ood_flags: list[str]
@@ -227,3 +227,53 @@ class FloodAlert(BaseModel):
     trend_delta: float
     rainfall_7d_mm: float
     message: str
+
+
+# ── Community flood reports ───────────────────────────────────────────────────
+
+class FloodReportRequest(BaseModel):
+    district: str
+    severity: str = Field(..., description="'minor' | 'moderate' | 'severe'")
+    description: str = Field(..., max_length=500)
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    reporter_name: Optional[str] = Field(default=None, max_length=80)
+
+
+class FloodReport(BaseModel):
+    id: int
+    district: str
+    severity: str
+    description: str
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    reporter_name: Optional[str] = None
+    timestamp: float
+    time_ago: str
+
+
+# ── SMS notifications ─────────────────────────────────────────────────────────
+
+class SubscribeRequest(BaseModel):
+    name: str = Field(..., min_length=1, max_length=80)
+    phone: str = Field(..., description="Phone number in E.164 format, e.g. +94771234567")
+    districts: list[str] = Field(..., min_length=1, description="Districts to monitor")
+
+
+class SubscribeResponse(BaseModel):
+    id: int
+    name: str
+    phone: str
+    districts: list[str]
+    created_at: float
+
+
+class UnsubscribeRequest(BaseModel):
+    phone: str
+
+
+class NotificationResult(BaseModel):
+    sent: int
+    skipped: int
+    errors: list[str]
+    detail: Optional[str] = None

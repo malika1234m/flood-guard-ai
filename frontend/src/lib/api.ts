@@ -303,10 +303,76 @@ export function getAlerts() {
   return request<FloodAlert[]>("/alerts");
 }
 
+// ── Community flood reports ────────────────────────────────────────────
+
+export interface FloodReport {
+  id: number;
+  district: string;
+  severity: "minor" | "moderate" | "severe";
+  description: string;
+  latitude: number | null;
+  longitude: number | null;
+  reporter_name: string | null;
+  timestamp: number;
+  time_ago: string;
+}
+
+export interface FloodReportRequest {
+  district: string;
+  severity: "minor" | "moderate" | "severe";
+  description: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  reporter_name?: string | null;
+}
+
+export function submitReport(payload: FloodReportRequest) {
+  return request<FloodReport>("/report", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function getReports(district?: string) {
+  const qs = district ? `?district=${encodeURIComponent(district)}` : "";
+  return request<FloodReport[]>(`/reports${qs}`);
+}
+
+// ── SMS subscriptions ──────────────────────────────────────────────────
+
+export interface SubscribeRequest {
+  name: string;
+  phone: string;
+  districts: string[];
+}
+
+export interface SubscribeResponse {
+  id: number;
+  name: string;
+  phone: string;
+  districts: string[];
+  created_at: number;
+}
+
+export function subscribe(payload: SubscribeRequest) {
+  return request<SubscribeResponse>("/subscribe", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function unsubscribe(phone: string) {
+  return request<{ status: string }>("/unsubscribe", {
+    method: "POST",
+    body: JSON.stringify({ phone }),
+  });
+}
+
 export const BASE_MODEL_NAMES: Record<string, string> = {
-  lgb: "LightGBM",
-  cat: "CatBoost",
-  xgb: "XGBoost",
+  lgb:     "LightGBM",
+  xgb:     "XGBoost",
+  cat:     "CatBoost",
+  catrmse: "CatBoost-RMSE",
 };
 
 export const RISK_COLORS: Record<string, string> = {

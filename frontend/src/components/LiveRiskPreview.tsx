@@ -26,7 +26,7 @@ const FALLBACK_RESULT: PredictResponse = {
   risk_category: "High",
   raw_score: 0.78,
   calibration_shift: 0,
-  base_model_scores: { lgb: 0.81, cat: 0.77, xgb: 0.76 },
+  base_model_scores: { lgb: 0.80, xgb: 0.79, cat: 0.78, catrmse: 0.76 },
   model_version: "preview",
   ood_flags: [],
   top_factors: [],
@@ -354,7 +354,17 @@ export function LiveRiskPreview() {
 
         {/* Bottom nav */}
         <div className="relative z-10 mx-5 mb-5 flex flex-wrap items-center justify-center gap-2 sm:mx-6 sm:mb-6 lg:absolute lg:inset-x-5 lg:bottom-5 lg:m-0">
-          <PreviewNavLink to="/predict" icon={Gauge} label="Run an assessment" />
+          {usingUserLocation ? (
+            <Link
+              to={`/district?district=${encodeURIComponent(districtName)}`}
+              className="flex items-center gap-2 rounded-full bg-brand px-5 py-2 text-sm font-bold text-[#04101f] shadow-lg transition-all hover:bg-brand/90 hover:scale-[1.03] active:scale-[0.98]"
+            >
+              <MapPin className="h-4 w-4" />
+              View {districtName} evacuation map →
+            </Link>
+          ) : (
+            <PreviewNavLink to="/predict" icon={Gauge} label="Run an assessment" />
+          )}
           <PreviewNavLink to="/dashboard" icon={Activity} label="Live monitoring" />
           <PreviewNavLink to="/impact" icon={Waves} label="Ditwah impact" />
         </div>

@@ -30,14 +30,20 @@ from .schemas import (
     EmergencyPriorityItem,
     FeedbackRequest,
     FloodAlert,
+    FloodReport,
+    FloodReportRequest,
     ForecastDay,
     HealthResponse,
     LiveDistrictRisk,
     ModelInfo,
+    NotificationResult,
     PredictRequest,
     PredictResponse,
     ReadinessCheck,
     ReadinessResponse,
+    SubscribeRequest,
+    SubscribeResponse,
+    UnsubscribeRequest,
 )
 
 FRONTEND_DIST = config.ROOT_DIR / "frontend" / "dist"
@@ -48,8 +54,17 @@ predictor: FloodRiskPredictor | None = None
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global predictor
-    predictor = FloodRiskPredictor()
+    try:
+        predictor = FloodRiskPredictor()
+        n_feat = predictor.metadata.get("n_features", "?")
+        print(f"Model loaded: {config.MODEL_VERSION} ({n_feat} features)")
+    except Exception as exc:
+        print(f"WARNING: Model loading failed ({exc}). "
+              f"Run `python -m src.train` to produce {config.MODEL_VERSION} artifacts. "
+              f"API starts in degraded mode — /predict returns 503.")
     monitoring.init_db()
+    from . import notifications as _notif
+    _notif.init_subscribers_table()
     yield
 
 
@@ -142,12 +157,34 @@ def district_risks():
     return sorted(results, key=lambda r: r.district)
 
 
+def _weather_severity(rain_7d: float) -> float:
+    """
+    Map 7-day rainfall (mm) to a 0-1 weather severity score using absolute thresholds.
+    The district profile typical-rainfall values are inflated (~85 mm for all districts)
+    because training data was monsoon-period-heavy. Running the ML model with raw live
+    rainfall barely shifts scores for dry districts, and can even move them the wrong way
+    due to complex feature interactions. This function captures current event intensity
+    directly and is blended with the ML structural score in _compute_live_risks().
+    """
+    if rain_7d >= 120: return 0.85
+    if rain_7d >= 80:  return 0.72
+    if rain_7d >= 50:  return 0.58
+    if rain_7d >= 25:  return 0.42
+    if rain_7d >= 10:  return 0.26
+    return 0.10   # very dry — only structural risk applies
+
+
 def _compute_live_risks() -> list[LiveDistrictRisk]:
     """Core logic shared by /live-risks and /alerts."""
     from .weather import get_all_weather
 
     if predictor is None:
         raise HTTPException(status_code=503, detail="Model not loaded")
+
+    # Live score = blend of structural ML risk + current weather severity.
+    # Structural (ML typical) captures terrain/infrastructure/flood-history.
+    # Weather severity captures current event intensity via absolute rainfall thresholds.
+    WEATHER_WEIGHT = 0.45
 
     weather = get_all_weather(predictor.district_profiles)
     results: list[LiveDistrictRisk] = []
@@ -157,41 +194,41 @@ def _compute_live_risks() -> list[LiveDistrictRisk]:
         live_7d = w.get("rainfall_7d_mm")
         typical_7d = float(profile.get("rainfall_7d_mm") or 0)
 
-        # Build live record — only override rainfall if we got real data
-        live_record = {**profile, "district": district}
-        weather_live = live_7d is not None
-        if weather_live:
-            live_record["rainfall_7d_mm"] = live_7d
-            typical_monthly = float(profile.get("monthly_rainfall_mm") or 0)
-            if typical_7d > 0:
-                live_record["monthly_rainfall_mm"] = typical_monthly * (live_7d / typical_7d)
-
         typical_record = {**profile, "district": district}
 
         try:
-            lp = predictor.predict(live_record)
             tp = predictor.predict(typical_record)
-
-            ls = lp["flood_risk_score"]
             ts = tp["flood_risk_score"]
+
+            weather_live = live_7d is not None
+            if weather_live:
+                ws = _weather_severity(live_7d)
+                ls = round(max(0.0, min(1.0,
+                    (1 - WEATHER_WEIGHT) * ts + WEATHER_WEIGHT * ws)), 4)
+                live_cat = config.risk_category(ls)
+            else:
+                ls = round(ts, 4)
+                live_cat = tp["risk_category"]
+
             delta = round(ls - ts, 4)
 
-            # Trend: did live rainfall push us into a worse category?
+            # Trend: category change OR score delta > 0.025 within same category
             CAT_RANK = {"Low": 0, "Moderate": 1, "High": 2, "Severe": 3}
-            live_rank = CAT_RANK.get(lp["risk_category"], 0)
-            typ_rank = CAT_RANK.get(tp["risk_category"], 0)
-            if live_rank > typ_rank:
+            live_rank = CAT_RANK.get(live_cat, 0)
+            typ_rank  = CAT_RANK.get(tp["risk_category"], 0)
+            DELTA_THRESH = 0.025
+            if live_rank > typ_rank or (live_rank >= typ_rank and delta > DELTA_THRESH):
                 trend = "Worsening"
-            elif live_rank < typ_rank:
+            elif live_rank < typ_rank or (live_rank <= typ_rank and delta < -DELTA_THRESH):
                 trend = "Improving"
             else:
                 trend = "Stable"
 
             results.append(LiveDistrictRisk(
                 district=district,
-                live_score=round(ls, 4),
+                live_score=ls,
                 typical_score=round(ts, 4),
-                live_category=lp["risk_category"],
+                live_category=live_cat,
                 typical_category=tp["risk_category"],
                 rainfall_7d_mm=round(live_7d if weather_live else typical_7d, 1),
                 typical_rainfall_7d_mm=round(typical_7d, 1),
@@ -218,16 +255,23 @@ def get_alerts():
     alert_list: list[FloodAlert] = []
 
     for r in live:
-        # Alert logic: trust the ML model's own category — no invented thresholds.
-        # Rule 1: model says Severe or High based on real rainfall → always alert.
-        # Rule 2: live rainfall pushed category higher than typical baseline → alert.
+        # Alert logic — four tiers in order of severity.
+        # Tier 1: model says Severe on live rainfall → always alert.
+        # Tier 2: High risk with real uplift vs typical baseline.
+        # Tier 3: Worsening trend pushes into Moderate.
+        # Tier 4: Score spike > 0.05 within Moderate (approaching High) or any Worsening.
+        SPIKE_THRESH = 0.05
         if r.live_category == "Severe":
             severity = "Severe"
         elif r.live_category == "High" and (r.trend == "Worsening" or r.typical_category in ("Low", "Moderate")):
-            # High AND either got worse vs baseline, or baseline was lower (real uplift)
+            severity = "High"
+        elif r.live_category == "High":
+            # High even without worsening vs typical — still alert
             severity = "High"
         elif r.trend == "Worsening" and r.live_category == "Moderate":
-            # Rainfall pushed a typically-lower district into Moderate
+            severity = "Moderate"
+        elif r.trend_delta > SPIKE_THRESH and r.live_score >= 0.38:
+            # Significant score spike even within same category
             severity = "Moderate"
         else:
             continue
@@ -401,22 +445,32 @@ def all_district_forecasts():
 
 @app.get("/emergency-priority", response_model=list[EmergencyPriorityItem])
 def emergency_priority():
-    """Districts ranked by composite emergency priority score."""
+    """Districts ranked by composite emergency priority score using live rainfall."""
     if predictor is None:
         raise HTTPException(status_code=503, detail="Model not loaded")
-    import math
+
+    # Use live risk data (cached, uses real Open-Meteo rainfall) so scores
+    # reflect current conditions rather than long-run typical profiles.
+    live_list = _compute_live_risks()
+    live_by_district = {r.district: r for r in live_list}
 
     items = []
     for district, profile in predictor.district_profiles.items():
-        record = {**profile, "district": district}
-        try:
-            pred = predictor.predict(record)
-        except Exception:
-            continue
+        lr = live_by_district.get(district)
+        if lr:
+            flood_risk_score = lr.live_score
+            risk_category = lr.live_category
+        else:
+            try:
+                pred = predictor.predict({**profile, "district": district})
+                flood_risk_score = pred["flood_risk_score"]
+                risk_category = pred["risk_category"]
+            except Exception:
+                continue
         items.append({
             "district": district,
-            "flood_risk_score": pred["flood_risk_score"],
-            "risk_category": pred["risk_category"],
+            "flood_risk_score": flood_risk_score,
+            "risk_category": risk_category,
             "population_density": float(profile.get("population_density_per_km2") or 0),
             "evac_km": float(profile.get("nearest_evac_km") or 0),
             "flood_history": float(profile.get("historical_flood_count") or 0),
@@ -492,7 +546,7 @@ def readiness():
     checks: list[ReadinessCheck] = []
 
     # 1 — model artifact on disk
-    artifact_path = config.ROOT_DIR / "models" / "v1" / "lgb_models.joblib"
+    artifact_path = config.MODEL_DIR / "lgb_models.joblib"
     checks.append(ReadinessCheck(
         name="model_artifact",
         status="ok" if artifact_path.exists() else "failed",
@@ -505,7 +559,7 @@ def readiness():
     ))
     # 3 — metadata readable
     try:
-        meta_path = config.ROOT_DIR / "models" / "v1" / "metadata.json"
+        meta_path = config.MODEL_DIR / "metadata.json"
         import json
         json.loads(meta_path.read_text())
         checks.append(ReadinessCheck(name="metadata_json", status="ok"))
@@ -528,6 +582,88 @@ def readiness():
     overall = "down" if len(failed) >= 2 else "degraded" if failed else "ok"
     version = predictor.metadata.get("version", "unknown") if predictor else "unknown"
     return ReadinessResponse(overall=overall, checks=checks, model_version=version)
+
+
+# ── Community flood reports (in-memory, last 200) ────────────────────────────
+_reports: list[FloodReport] = []
+_report_counter: int = 0
+
+
+def _time_ago(ts: float) -> str:
+    diff = int(time.time() - ts)
+    if diff < 60:
+        return "just now"
+    if diff < 3600:
+        return f"{diff // 60}m ago"
+    if diff < 86400:
+        return f"{diff // 3600}h ago"
+    return f"{diff // 86400}d ago"
+
+
+@app.post("/report", response_model=FloodReport)
+def submit_report(req: FloodReportRequest):
+    global _report_counter
+    _report_counter += 1
+    report = FloodReport(
+        id=_report_counter,
+        district=req.district,
+        severity=req.severity,
+        description=req.description,
+        latitude=req.latitude,
+        longitude=req.longitude,
+        reporter_name=req.reporter_name,
+        timestamp=time.time(),
+        time_ago="just now",
+    )
+    _reports.insert(0, report)
+    if len(_reports) > 200:
+        _reports.pop()
+    return report
+
+
+@app.get("/reports", response_model=list[FloodReport])
+def get_reports(district: str | None = None, limit: int = 50):
+    """Latest community flood reports. Optionally filter by district."""
+    limit = min(limit, 100)
+    results = _reports if not district else [r for r in _reports if r.district == district]
+    # Refresh time_ago on each read
+    now = time.time()
+    for r in results[:limit]:
+        r.time_ago = _time_ago(r.timestamp)
+    return results[:limit]
+
+
+# ── SMS notification endpoints ────────────────────────────────────────────────
+
+@app.post("/subscribe", response_model=SubscribeResponse, status_code=201)
+def subscribe(req: SubscribeRequest):
+    """Register a phone number to receive SMS alerts for chosen districts."""
+    from . import notifications
+    row = notifications.subscribe(req.name, req.phone, req.districts)
+    return SubscribeResponse(**row)
+
+
+@app.post("/unsubscribe")
+def unsubscribe(req: UnsubscribeRequest):
+    """Remove a subscriber by phone number."""
+    from . import notifications
+    removed = notifications.unsubscribe(req.phone)
+    if not removed:
+        raise HTTPException(status_code=404, detail="Phone number not found")
+    return {"status": "unsubscribed"}
+
+
+@app.post("/notifications/send", response_model=NotificationResult)
+def send_notifications():
+    """
+    Pull live alerts and dispatch SMS to all subscribers whose watched
+    districts currently have active flood alerts.
+    Respects a 6-hour cooldown per subscriber to avoid spam.
+    """
+    from . import notifications
+    active = [a.model_dump() for a in get_alerts()]
+    result = notifications.send_alerts(active)
+    return NotificationResult(**result)
 
 
 @app.post("/feedback")

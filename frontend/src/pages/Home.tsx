@@ -20,7 +20,7 @@ const STEPS = [
   {
     title: "Multi-model risk score",
     description:
-      "Several machine-learning models analyze the data independently. Their results are combined and calibrated into one clear risk score from 0 to 1.",
+      "Six machine-learning models analyze the data independently. Their SLSQP-optimised blend is calibrated into one clear risk score from 0 to 1.",
   },
   {
     title: "AI risk report & monitoring",
@@ -34,7 +34,7 @@ const FEATURES = [
     icon: Layers,
     title: "Multi-model risk engine",
     description:
-      "Three independent machine-learning models cross-check each other, and the combined result is calibrated against real flood outcomes from across Sri Lanka for a dependable score.",
+      "Six independent machine-learning models (LightGBM, XGBoost ×2, CatBoost ×2, CatBoost-RMSE) cross-check each other, and the SLSQP-blended result is calibrated against real flood outcomes from across Sri Lanka for a dependable score.",
   },
   {
     icon: Droplet,
@@ -102,10 +102,10 @@ export function Home() {
           </p>
           <div className="mb-2 flex flex-wrap items-center justify-center gap-3.5">
             <Button asChild variant="gradient" size="xl">
-              <Link to="/predict">Assess a location</Link>
+              <Link to="/district">Check my district</Link>
             </Button>
             <Button asChild variant="brand-outline" size="xl">
-              <Link to="/dashboard">View live monitoring</Link>
+              <Link to="/forecast">10-day forecast</Link>
             </Button>
           </div>
         </div>
@@ -242,7 +242,7 @@ export function Home() {
           and AI-written report.
         </p>
         <Button asChild variant="gradient" size="xl">
-          <Link to="/predict">Assess a location</Link>
+          <Link to="/district">Check my district</Link>
         </Button>
       </section>
     </div>

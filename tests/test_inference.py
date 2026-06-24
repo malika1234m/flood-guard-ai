@@ -8,7 +8,7 @@ def test_predictor_loads_and_predicts(sample_record):
 
     assert 0.0 <= result["flood_risk_score"] <= 1.0
     assert result["risk_category"] in {"Low", "Moderate", "High", "Severe"}
-    assert set(result["base_model_scores"].keys()) == {"lgb", "cat", "xgb"}
+    assert set(result["base_model_scores"].keys()) == {"lgb", "xgb", "cat", "catrmse"}
     assert result["model_version"] == config.MODEL_VERSION
 
 

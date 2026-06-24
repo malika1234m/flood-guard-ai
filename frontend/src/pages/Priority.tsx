@@ -155,7 +155,7 @@ export function Priority() {
     <div>
       <PageHero
         title="Emergency Priority"
-        description="Districts ranked by a composite emergency response priority score that combines flood risk, population exposure, evacuation access, flood history, and infrastructure resilience. Use this to decide where to deploy resources first."
+        description="Districts ranked by a composite emergency response priority score using live Open-Meteo rainfall — combining current flood risk, population exposure, evacuation access, flood history, and infrastructure resilience. Use this to decide where to deploy resources first."
         image="/hero/flood-network-bg.webp"
         imageAlt="Emergency priority visualization"
         action={
@@ -181,6 +181,19 @@ export function Priority() {
           ) : undefined
         }
       />
+
+      {/* ── Live weather notice ── */}
+      <div className="mb-4 flex items-center gap-2 text-[0.72rem] text-muted-foreground">
+        <span className="pulse-dot" />
+        <span className="font-semibold text-brand">Open-Meteo · live rainfall</span>
+        <span>· flood risk scores reflect current 7-day precipitation</span>
+        {lastUpdated && !loading && (
+          <span className="ml-auto flex items-center gap-1">
+            <Clock className="h-3 w-3" />
+            {lastUpdated.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+          </span>
+        )}
+      </div>
 
       {/* ── KPI strip ── */}
       <div className="mb-5 grid grid-cols-2 gap-3.5 sm:grid-cols-4">

@@ -113,6 +113,14 @@ export default function RootLayout() {
           }}
         >
           <Tabs.Screen
+            name="district"
+            options={{
+              headerTitle: () => <BrandHeaderTitle title="My District" />,
+              tabBarLabel: 'My District',
+              tabBarIcon: ({ focused }) => <TabIcon name="map-pin" focused={focused} />,
+            }}
+          />
+          <Tabs.Screen
             name="index"
             options={{
               headerTitle: () => <BrandHeaderTitle title="FloodGuard AI" />,
@@ -123,8 +131,8 @@ export default function RootLayout() {
           <Tabs.Screen
             name="predict"
             options={{
-              headerTitle: () => <BrandHeaderTitle title="Check Flood Risk" />,
-              tabBarLabel: 'Predict',
+              headerTitle: () => <BrandHeaderTitle title="Advanced Check" />,
+              tabBarLabel: 'Advanced',
               tabBarIcon: ({ focused }) => <TabIcon name="droplet" focused={focused} />,
             }}
           />
@@ -132,7 +140,7 @@ export default function RootLayout() {
             name="dashboard"
             options={{
               headerTitle: () => <BrandHeaderTitle title="Live Monitoring" />,
-              tabBarLabel: 'Dashboard',
+              tabBarLabel: 'Monitor',
               tabBarIcon: ({ focused }) => <TabIcon name="activity" focused={focused} />,
             }}
           />

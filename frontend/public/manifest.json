@@ -1,0 +1,38 @@
+{
+  "name": "FloodGuard AI — Sri Lanka Flood Risk",
+  "short_name": "FloodGuard",
+  "description": "Real-time flood risk intelligence for every district in Sri Lanka. Check your district, get emergency guidance, and report flooding.",
+  "start_url": "/district",
+  "display": "standalone",
+  "background_color": "#04101f",
+  "theme_color": "#38bdf8",
+  "orientation": "portrait-primary",
+  "categories": ["weather", "utilities", "safety"],
+  "icons": [
+    {
+      "src": "/logo/floodguard-icon-64.png",
+      "sizes": "64x64",
+      "type": "image/png"
+    },
+    {
+      "src": "/logo/floodguard-icon-256.png",
+      "sizes": "256x256",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "My District",
+      "short_name": "District",
+      "url": "/district",
+      "description": "Check your district's current flood risk"
+    },
+    {
+      "name": "Emergency Priority",
+      "short_name": "Priority",
+      "url": "/priority",
+      "description": "See which districts need help most urgently"
+    }
+  ]
+}

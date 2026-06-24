@@ -265,4 +265,18 @@
       opacity: 0;
     }
   }
+
+  /* MapLibre popup — remove default white background / tip */
+  .maplibregl-popup-content {
+    background: transparent !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+  }
+  .maplibregl-popup-tip {
+    display: none !important;
+  }
+  .maplibregl-popup-close-button {
+    display: none !important;
+  }
 }

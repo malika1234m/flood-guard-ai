@@ -19,3 +19,11 @@ requirements.txt
 frontend/node_modules/
 frontend/dist/
 mobile/
+# Competition artifacts
+oof_v3.npy
+oof_v3_optimized.npy
+submission_v2.csv
+submission_v3.csv
+submission_v3_optimized.csv
+scripts/train_v3.py
+scripts/generate_submission.py

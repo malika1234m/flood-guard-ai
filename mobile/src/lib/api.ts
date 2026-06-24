@@ -221,6 +221,41 @@ export function getAlerts() {
   return request<FloodAlert[]>('/alerts');
 }
 
+// ── Community flood reports ────────────────────────────────────────────
+
+export interface FloodReport {
+  id: number;
+  district: string;
+  severity: 'minor' | 'moderate' | 'severe';
+  description: string;
+  latitude: number | null;
+  longitude: number | null;
+  reporter_name: string | null;
+  timestamp: number;
+  time_ago: string;
+}
+
+export interface FloodReportRequest {
+  district: string;
+  severity: 'minor' | 'moderate' | 'severe';
+  description: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  reporter_name?: string | null;
+}
+
+export function submitReport(payload: FloodReportRequest) {
+  return request<FloodReport>('/report', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export function getReports(district?: string) {
+  const qs = district ? `?district=${encodeURIComponent(district)}` : '';
+  return request<FloodReport[]>(`/reports${qs}`);
+}
+
 export const BASE_MODEL_NAMES: Record<string, string> = {
   lgb: 'LightGBM',
   cat: 'CatBoost',

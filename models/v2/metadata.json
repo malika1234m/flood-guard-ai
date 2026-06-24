@@ -1,0 +1,378 @@
+{
+  "version": "v2",
+  "trained_at": "2026-06-22T13:59:50.946505",
+  "n_features": 361,
+  "n_rows": 20886,
+  "n_folds": 5,
+  "model_names": [
+    "lgb",
+    "xgb1",
+    "xgb2",
+    "cat1",
+    "cat2",
+    "catrmse"
+  ],
+  "blend_weights": {
+    "lgb": 5.311484201212965e-19,
+    "xgb1": 0.10282867095906217,
+    "xgb2": 0.1837989477894862,
+    "cat1": 0.17741490536024718,
+    "cat2": 0.3574824658661121,
+    "catrmse": 0.1784750100250924
+  },
+  "posthoc": {
+    "a": 1.1017540245441815,
+    "b": 1.2631376403507377,
+    "c": 0.05
+  },
+  "train_target_mean": 0.4780423441539788,
+  "pred_mean": 0.47644903662522087,
+  "metrics": {
+    "oof_lgb": 0.3850124068009765,
+    "oof_xgb1": 0.3848445980243142,
+    "oof_xgb2": 0.38471802377515807,
+    "oof_cat1": 0.3846065316057148,
+    "oof_cat2": 0.3844057514931979,
+    "oof_catrmse": 0.3850811496409943,
+    "oof_blend": 0.3840854951991658,
+    "oof_posthoc": 0.3838391641428681
+  },
+  "top_features": [
+    [
+      "fluvial_risk_feat",
+      4037.5195709466934
+    ],
+    [
+      "district_te",
+      3146.931306362152
+    ],
+    [
+      "district_te_q25",
+      2318.113844871521
+    ],
+    [
+      "inund_log1p",
+      2183.296417593956
+    ],
+    [
+      "extreme_x_terrain",
+      1809.0277853012085
+    ],
+    [
+      "monthly_rainfall_mm",
+      1327.2147841453552
+    ],
+    [
+      "distance_to_river_m",
+      1224.4859716892242
+    ],
+    [
+      "nearest_evac_km",
+      1174.1384333372116
+    ],
+    [
+      "drainage_index",
+      1166.5618505477905
+    ],
+    [
+      "terrain_roughness_index_dist_rank",
+      1155.823637008667
+    ],
+    [
+      "infrastructure_score",
+      1130.9217879772186
+    ],
+    [
+      "infra_deficit_sig_te_q25",
+      1115.0022053718567
+    ],
+    [
+      "kmeans_5_dist",
+      1100.5477223396301
+    ],
+    [
+      "grid_id_025_te_q75",
+      1092.9205601215363
+    ],
+    [
+      "longitude",
+      1087.3996794223785
+    ],
+    [
+      "ndvi",
+      1065.431960105896
+    ],
+    [
+      "knn75_iqr",
+      1056.848572731018
+    ],
+    [
+      "rain_x_drain",
+      1053.205842256546
+    ],
+    [
+      "socio_x_infra",
+      1051.425248503685
+    ],
+    [
+      "rainfall_7d_mm",
+      1046.6348147392273
+    ],
+    [
+      "downstream_sig_te_q25",
+      1043.4415011405945
+    ],
+    [
+      "nearest_hospital_km",
+      1022.2713644504547
+    ],
+    [
+      "dae_6",
+      1014.5741670131683
+    ],
+    [
+      "infra_deficit_sig_te_std",
+      1012.6910240650177
+    ],
+    [
+      "dae_14",
+      995.474606513977
+    ]
+  ],
+  "categorical_options": {
+    "district": [
+      "Ampara",
+      "Anuradhapura",
+      "Badulla",
+      "Batticaloa",
+      "Colombo",
+      "Galle",
+      "Gampaha",
+      "Hambantota",
+      "Jaffna",
+      "Kalutara",
+      "Kandy",
+      "Kegalle",
+      "Kilinochchi",
+      "Kurunegala",
+      "Mannar",
+      "Matale",
+      "Matara",
+      "Monaragala",
+      "Mullaitivu",
+      "Nuwara Eliya",
+      "Polonnaruwa",
+      "Puttalam",
+      "Ratnapura",
+      "Trincomalee",
+      "Vavuniya"
+    ],
+    "landcover": [
+      "Agriculture",
+      "Bare Soil",
+      "Forest",
+      "Plantation",
+      "Scrub",
+      "Urban",
+      "Wetland"
+    ],
+    "soil_type": [
+      "Clay",
+      "Loamy",
+      "Peaty",
+      "Sandy",
+      "Silty"
+    ],
+    "water_supply": [
+      "Municipal",
+      "Rainwater harvesting",
+      "Surface water",
+      "Tube-well",
+      "Well"
+    ],
+    "electricity": [
+      "Grid",
+      "Mixed",
+      "Off-grid (solar)"
+    ],
+    "road_quality": [
+      "Fair",
+      "Good (paved)",
+      "No road access",
+      "Poor (unpaved)"
+    ],
+    "urban_rural": [
+      "Rural",
+      "Urban"
+    ],
+    "water_presence_flag": [
+      "Likely",
+      "Unlikely"
+    ]
+  },
+  "district_defaults": {
+    "Ampara": {
+      "seasonal_index": -0.02704247602052421,
+      "terrain_roughness_index": 0.7688175861059527,
+      "socioeconomic_status_index": 0.4841183902437838,
+      "extreme_weather_index": 0.7000566048086809
+    },
+    "Anuradhapura": {
+      "seasonal_index": 0.037739740252682,
+      "terrain_roughness_index": 0.7928932568780104,
+      "socioeconomic_status_index": 0.4890696643529426,
+      "extreme_weather_index": 0.6965021839194622
+    },
+    "Badulla": {
+      "seasonal_index": -0.006011611716498288,
+      "terrain_roughness_index": 0.887716612928086,
+      "socioeconomic_status_index": 0.48721686490379446,
+      "extreme_weather_index": 0.695760955832944
+    },
+    "Batticaloa": {
+      "seasonal_index": -0.0067273327118283315,
+      "terrain_roughness_index": 0.795529791060175,
+      "socioeconomic_status_index": 0.48369931269687316,
+      "extreme_weather_index": 0.6841044113853121
+    },
+    "Colombo": {
+      "seasonal_index": 0.008085489826874166,
+      "terrain_roughness_index": 0.8029311211300797,
+      "socioeconomic_status_index": 0.6106565366775704,
+      "extreme_weather_index": 0.6909074839186964
+    },
+    "Galle": {
+      "seasonal_index": -0.004168504004617203,
+      "terrain_roughness_index": 0.7907237839340964,
+      "socioeconomic_status_index": 0.6127709983340266,
+      "extreme_weather_index": 0.700855240984038
+    },
+    "Gampaha": {
+      "seasonal_index": 0.006514104990513069,
+      "terrain_roughness_index": 0.7992819219948655,
+      "socioeconomic_status_index": 0.6077950475111766,
+      "extreme_weather_index": 0.6867507677690665
+    },
+    "Hambantota": {
+      "seasonal_index": -0.025145836337209303,
+      "terrain_roughness_index": 0.797070535659124,
+      "socioeconomic_status_index": 0.4913328119049077,
+      "extreme_weather_index": 0.6910502819895623
+    },
+    "Jaffna": {
+      "seasonal_index": 0.00960989206756751,
+      "terrain_roughness_index": 0.823864073093559,
+      "socioeconomic_status_index": 0.48696790350182295,
+      "extreme_weather_index": 0.6939985686795678
+    },
+    "Kalutara": {
+      "seasonal_index": 0.04193397673677707,
+      "terrain_roughness_index": 0.7934480117631626,
+      "socioeconomic_status_index": 0.48640501012791665,
+      "extreme_weather_index": 0.6983401426646196
+    },
+    "Kandy": {
+      "seasonal_index": -0.03757099949254736,
+      "terrain_roughness_index": 0.8699639264070679,
+      "socioeconomic_status_index": 0.608512529486778,
+      "extreme_weather_index": 0.7011004494243025
+    },
+    "Kegalle": {
+      "seasonal_index": 0.055912538528855096,
+      "terrain_roughness_index": 0.7851285476307244,
+      "socioeconomic_status_index": 0.48860193483568753,
+      "extreme_weather_index": 0.689688253014826
+    },
+    "Kilinochchi": {
+      "seasonal_index": -0.026378074278060226,
+      "terrain_roughness_index": 0.7877463276689194,
+      "socioeconomic_status_index": 0.48643495682247656,
+      "extreme_weather_index": 0.6918254308797996
+    },
+    "Kurunegala": {
+      "seasonal_index": -0.013556981786173419,
+      "terrain_roughness_index": 0.8036046484179847,
+      "socioeconomic_status_index": 0.48423612763106766,
+      "extreme_weather_index": 0.6952416215477493
+    },
+    "Mannar": {
+      "seasonal_index": -0.025392564878303183,
+      "terrain_roughness_index": 0.790593297824293,
+      "socioeconomic_status_index": 0.4856532024819572,
+      "extreme_weather_index": 0.6907334153368069
+    },
+    "Matale": {
+      "seasonal_index": 0.031920553302299204,
+      "terrain_roughness_index": 0.8669663267767664,
+      "socioeconomic_status_index": 0.4844852464908657,
+      "extreme_weather_index": 0.6901500195711842
+    },
+    "Matara": {
+      "seasonal_index": 0.03114235566928642,
+      "terrain_roughness_index": 0.7993057328320415,
+      "socioeconomic_status_index": 0.4933420574888509,
+      "extreme_weather_index": 0.6902978082581854
+    },
+    "Monaragala": {
+      "seasonal_index": -5.517704153911204e-05,
+      "terrain_roughness_index": 0.8031908397384436,
+      "socioeconomic_status_index": 0.4788675886987798,
+      "extreme_weather_index": 0.695579325975807
+    },
+    "Mullaitivu": {
+      "seasonal_index": 0.01658458538722787,
+      "terrain_roughness_index": 0.7925401896734707,
+      "socioeconomic_status_index": 0.4889286831403914,
+      "extreme_weather_index": 0.6992685504780771
+    },
+    "Nuwara Eliya": {
+      "seasonal_index": -0.047650870959270106,
+      "terrain_roughness_index": 0.8737131270716232,
+      "socioeconomic_status_index": 0.48430888722906823,
+      "extreme_weather_index": 0.6888245547406717
+    },
+    "Polonnaruwa": {
+      "seasonal_index": -0.029209050926006636,
+      "terrain_roughness_index": 0.8012699861220987,
+      "socioeconomic_status_index": 0.49252455886233076,
+      "extreme_weather_index": 0.6815265637319485
+    },
+    "Puttalam": {
+      "seasonal_index": 0.02125324585681782,
+      "terrain_roughness_index": 0.7775683428715097,
+      "socioeconomic_status_index": 0.48609245850723576,
+      "extreme_weather_index": 0.6922273042707124
+    },
+    "Ratnapura": {
+      "seasonal_index": 0.029300471761971685,
+      "terrain_roughness_index": 0.7825822835516065,
+      "socioeconomic_status_index": 0.4807771344445786,
+      "extreme_weather_index": 0.692043831292377
+    },
+    "Trincomalee": {
+      "seasonal_index": 0.04156043061921472,
+      "terrain_roughness_index": 0.8011727976282464,
+      "socioeconomic_status_index": 0.4771498505331764,
+      "extreme_weather_index": 0.681648024622532
+    },
+    "Unknown": {
+      "seasonal_index": 0.004642937055118949,
+      "terrain_roughness_index": 0.7294554876409042,
+      "socioeconomic_status_index": 0.4774693104841269,
+      "extreme_weather_index": 0.363247883800269
+    },
+    "Vavuniya": {
+      "seasonal_index": 0.02472165770363007,
+      "terrain_roughness_index": 0.7968831243464948,
+      "socioeconomic_status_index": 0.48553599733791825,
+      "extreme_weather_index": 0.6937214739293395
+    }
+  },
+  "advanced_field_global_defaults": {
+    "seasonal_index": 0.004154030837254419,
+    "terrain_roughness_index": 0.8046597657042287,
+    "socioeconomic_status_index": 0.504968376680761,
+    "extreme_weather_index": 0.6796424033343946
+  },
+  "training_seconds": 116.72362899780273
+}

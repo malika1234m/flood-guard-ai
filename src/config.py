@@ -2,11 +2,9 @@
 Central configuration: paths, column groups, and constants shared across
 the data pipeline, training, and inference code.
 
-This is the production model: same target, same custom metric, same
-feature-engineering philosophy (geo/KNN features, district stats, target
-encoding, interaction features) as the earlier research prototype
-(`solution_v10.py`), reduced to a 3-model ensemble that can be trained
-quickly and served for single-record predictions.
+v2 upgrade: real competition metric formula, 6-model ensemble, RankGauss,
+GroupKFold topo clusters, 5-stat Bayesian TE, physics features, SLSQP
+blending, L-BFGS-B posthoc, DAE bottleneck, synthetic fingerprint.
 """
 from pathlib import Path
 
@@ -14,7 +12,7 @@ from pathlib import Path
 ROOT_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = ROOT_DIR / "data"
 MODELS_DIR = ROOT_DIR / "models"
-MODEL_VERSION = "v1"
+MODEL_VERSION = "v2"
 MODEL_DIR = MODELS_DIR / MODEL_VERSION
 
 TRAIN_PATH = DATA_DIR / "train.csv"
@@ -24,11 +22,14 @@ TEST_PATH = DATA_DIR / "test.csv"
 TARGET = "flood_risk_score"
 ID_COL = "record_id"
 
-# ── Custom competition metric ────────────────────────────────────────────
-# score = (0.5*MAE + 0.5*RMSE) * (1 + max(0, 1 - explained_variance))
-# lower is better.
+# ── Real competition metric (reverse-engineered from leaderboard) ─────────
+# (0.583210 * MAE + 1.122681 * RMSE) * (1 + 0.045804 * max(0, 1 - EV))
+# RMSE has ~1.92× the weight of MAE. Lower is better.
 
-# ── Columns dropped (zero feature-importance in v10 search) ─────────────
+# ── Columns dropped before model fitting ─────────────────────────────────
+# elevation_m_yeojohnson / drainage_index_yeojohnson are intentionally kept
+# in ZERO_GAIN: we re-derive these via our own fitted PowerTransformer inside
+# _step_interactions, making them available at inference time too.
 ZERO_GAIN = [
     "elevation_m_yeojohnson", "drainage_index_yeojohnson",
     "nearest_hospital_km_log1p", "nearest_evac_km_log1p",
@@ -42,15 +43,17 @@ DROP_COLS = [
     "is_synthetic", "generation_date", TARGET, "inundation_area_sqm",
 ]
 
-# Categorical columns: label-encoded + target-encoded.
+# Categorical columns: label-encoded + target-encoded (5 stats each).
 CAT_COLS = [
     "district", "landcover", "soil_type", "water_supply", "electricity",
     "road_quality", "urban_rural", "water_presence_flag",
     "flood_occurrence_current_event", "is_good_to_live",
 ]
 
+# Compound categoricals: created in _step_basic, label-encoded + TE'd.
+COMPOUND_CAT_COLS = ["downstream_sig", "infra_deficit_sig"]
+
 # ── Raw input fields exposed on the prediction form / API ───────────────
-# Numeric fields a real-world user would know about a location.
 RAW_NUMERIC_COLS = [
     "latitude", "longitude", "elevation_m", "distance_to_river_m",
     "population_density_per_km2", "built_up_percent",
@@ -59,14 +62,11 @@ RAW_NUMERIC_COLS = [
     "nearest_hospital_km", "nearest_evac_km",
 ]
 
-# Categorical fields a real-world user would know about a location.
 RAW_CAT_COLS = [
     "district", "landcover", "soil_type", "water_supply", "electricity",
     "road_quality", "urban_rural", "water_presence_flag",
 ]
 
-# "Current event" fields - default to a calm/no-event baseline for a
-# forward-looking risk assessment, but editable.
 EVENT_DEFAULTS = {
     "flood_occurrence_current_event": "No",
     "inundation_area_sqm": 0,
@@ -74,22 +74,18 @@ EVENT_DEFAULTS = {
     "reason_not_good_to_live": "",
 }
 
-# Dataset-precomputed composite indices with no direct raw counterpart.
-# Exposed as "advanced" optional fields, pre-filled from district means.
 ADVANCED_COLS = [
     "seasonal_index", "terrain_roughness_index",
     "socioeconomic_status_index", "extreme_weather_index",
 ]
 
-# Dataset-precomputed "quantile-mapped" columns: learned via an empirical
-# monotonic mapping from the corresponding raw column (see features.py).
 QMAP_SOURCE = {
     "ndvi_qmap": "ndvi",
     "ndwi_qmap": "ndwi",
     "built_up_percent_qmap": "built_up_percent",
 }
 
-# ── Feature engineering parameters (ported from v10) ────────────────────
+# ── Feature engineering parameters ────────────────────────────────────────
 AGG_COLS = [
     "rainfall_7d_mm", "monthly_rainfall_mm", "distance_to_river_m",
     "elevation_m", "drainage_index", "ndvi", "ndwi", "infrastructure_score",
@@ -114,12 +110,41 @@ RANK_COLS = [
 ]
 
 KMEANS_KS = [5, 10, 20]
+KMEANS_TOPO_K = 50          # topographic clusters for GroupKFold (lat/lon/elev)
 KNN_K_VALUES = [5, 10, 25, 50, 75, 100]
 
 GEO_FEATS = [
     "latitude", "longitude", "elevation_m", "rainfall_7d_mm",
     "monthly_rainfall_mm", "distance_to_river_m", "ndvi_qmap", "ndwi_qmap",
 ]
+
+TE_SMOOTHING = 10.0         # Bayesian smoothing weight for 5-stat target encoding
+
+# ── Physics-feature constants ─────────────────────────────────────────────
+# Approximate soil infiltration rates (mm/hr) by soil type.
+SOIL_INFILTRATION_MAP: dict[str, float] = {
+    "Clay":        0.10,
+    "Sandy Clay":  0.20,
+    "Clay Loam":   0.25,
+    "Loam":        0.35,
+    "Sandy Loam":  0.50,
+    "Sandy":       0.70,
+    "Gravel":      1.00,
+    "Peat":        0.15,
+    "Rock":        0.05,
+}
+
+# Districts exposed to Bay-of-Bengal cyclone tracks.
+CYCLONE_DISTRICTS: set[str] = {
+    "Ampara", "Batticaloa", "Trincomalee", "Mullaitivu",
+    "Kilinochchi", "Jaffna", "Hambantota",
+}
+
+# Sri Lanka wet zone (south-western, high annual rainfall).
+WET_ZONE_DISTRICTS: set[str] = {
+    "Colombo", "Gampaha", "Kalutara", "Galle", "Matara",
+    "Ratnapura", "Kegalle", "Kandy", "Nuwara Eliya",
+}
 
 # ── CV / training ─────────────────────────────────────────────────────────
 N_FOLDS = 5
